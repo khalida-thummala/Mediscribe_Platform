@@ -77,7 +77,7 @@ The backend API will be available at `http://127.0.0.1:8000`. You can access the
 Navigate to the frontend directory, install the packages, and run the development server:
 
 ```bash
-cd mediscribe
+cd frontend
 npm install
 npm run dev
 ```

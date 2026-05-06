@@ -19,7 +19,7 @@ The backend is a FastAPI application that can be deployed to Render using the pr
 4. **Deploy**: Render will build and start the service.
 
 ### Database Migrations:
-The application is configured to create tables on startup. For more complex schema changes, use the provided migration scripts in the `backend/` folder.
+The application is configured to create tables on startup. For more complex schema changes, use the provided migration scripts in the `backend/scripts/` folder.
 
 ---
 

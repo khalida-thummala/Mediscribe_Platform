@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS
-    # In production, this should be a list of domains like ["https://mediscribe.vercel.app"]
-    ALLOWED_ORIGINS: List[str] = ["*"] 
+    # In production, set this to specific domains in .env, e.g., ALLOWED_ORIGINS=https://mediscribe.health,https://app.mediscribe.health
+    ALLOWED_ORIGINS: List[str] = os.getenv("ALLOWED_ORIGINS", "*").split(",")
     
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./mediscribe.db")
