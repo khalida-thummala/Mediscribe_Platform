@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from typing import List, Optional
+from fastapi import UploadFile, File
+import os
 
 from app.db.deps import get_db
 from app.models.consultation import Consultation
@@ -95,40 +97,44 @@ def start_consultation(
     return {"message": "Consultation started"}
 
 # END CONSULTATION
+
+
 @router.post("/{consultation_id}/end")
-def end_consultation(
+async def end_consultation(
     consultation_id: str,
-    data: ConsultationEnd,
+    audio: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(["admin", "practitioner"])
     )
 ):
-    try:
-        consultation = ConsultationService.end_consultation(
-            db, 
-            consultation_id, 
-            current_user.organization_id,
-            audio_data=data.audio_data
+
+    os.makedirs("uploads", exist_ok=True)
+
+    file_path = f"uploads/{audio.filename}"
+
+    with open(file_path, "wb") as buffer:
+        buffer.write(await audio.read())
+
+    consultation = ConsultationService.end_consultation(
+        db,
+        consultation_id,
+        current_user.organization_id,
+        audio_file_path=file_path
+    )
+
+    if not consultation:
+        raise HTTPException(
+            status_code=404,
+            detail="Consultation not found"
         )
 
-        if not consultation:
-            raise HTTPException(status_code=404, detail="Consultation not found")
-
-        return {
-            "consultation_id": consultation.consultation_id,
-            "status": consultation.status,
-            "ended_at": consultation.ended_at,
-            "duration_minutes": consultation.duration_minutes,
-            "transcription_job_id": getattr(consultation, "transcription_job_id", "pending"),
-            "transcription_status": consultation.transcription_status
-        }
-    except Exception as e:
-        print(f"CRITICAL ERROR in end_consultation: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Backend Error: {str(e)}")
-
-
-
+    return {
+        "consultation_id": consultation.consultation_id,
+        "status": consultation.status,
+        "transcription_status": consultation.transcription_status,
+        "transcription_text": consultation.transcription_text
+    }
 @router.post("/{consultation_id}/generate-soap")
 def generate_soap_endpoint(
     consultation_id: str,
@@ -145,7 +151,8 @@ def generate_soap_endpoint(
     # Check if report already exists
     existing_report = db.query(Report).filter(Report.consultation_id == consultation_id).first()
     if existing_report:
-        return existing_report
+        db.delete(existing_report)
+        db.commit()
 
     from app.core.ai import generate_soap, check_drug_interactions
 

@@ -1,176 +1,457 @@
 import { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+
+import { useMutation } from '@tanstack/react-query'
+
 import { consultationsApi } from '@/api/consultations'
+
 import { useRecording } from '@/hooks/useRecording'
+
 import { useConsultationStore } from '@/store/consultationStore'
-import { Mic, StopCircle, Loader2, Info } from 'lucide-react'
+
+import {
+  Mic,
+  StopCircle,
+  Loader2,
+  Info
+} from 'lucide-react'
+
 import AudioVisualizer from './AudioVisualizer'
+
 import toast from 'react-hot-toast'
+
 
 interface Props {
   consultationId: string
   onComplete: () => void
 }
 
-export default function RecordingPanel({ consultationId, onComplete }: Props) {
-  const { isRecording, start, stop, analyser } = useRecording()
-  const { recSeconds, transcript } = useConsultationStore()
-  const [phase, setPhase] = useState<'idle' | 'recording' | 'stopping' | 'done'>('idle')
 
-  // Fetch transcription after done
-  const { data: transcription } = useQuery({
-    queryKey: ['transcription', consultationId],
-    queryFn: () => consultationsApi.getTranscription(consultationId),
-    enabled: phase === 'done',
-  })
+export default function RecordingPanel({
 
+  consultationId,
+  onComplete
+
+}: Props) {
+
+  const {
+    isRecording,
+    start,
+    stop,
+    analyser
+  } = useRecording()
+
+  const {
+    recSeconds,
+    transcript
+  } = useConsultationStore()
+
+  const [phase, setPhase] =
+    useState<
+      'idle' |
+      'recording' |
+      'stopping' |
+      'done'
+    >('idle')
+
+
+  // END CONSULTATION
   const endMut = useMutation({
-    mutationFn: (audioData: string) => consultationsApi.end(consultationId, audioData),
-    onSuccess: () => {
+
+    mutationFn: (audioData: string) =>
+      consultationsApi.end(
+        consultationId,
+        audioData
+      ),
+
+    onSuccess: async () => {
+      try {
+
+        await consultationsApi.generateSoap(
+          consultationId
+        )
+
+        toast.success(
+          'SOAP report generated successfully'
+        )
+
+      } catch (err) {
+
+        console.error(err)
+
+        toast.error(
+          'SOAP generation failed'
+        )
+      }
+
       setPhase('done')
-      toast.success('Consultation ended — SOAP generation triggered')
-      setTimeout(onComplete, 3000)
+
+      setTimeout(
+        onComplete,
+        3000
+      )
     },
-    onError: (err: any) => { 
-      const msg = err.response?.data?.detail ?? 'Failed to end consultation'
+    onError: (err: any) => {
+
+      const msg =
+        err.response?.data?.detail ??
+        'Failed to end consultation'
+
       toast.error(msg)
-      setPhase('idle') 
+
+      setPhase('idle')
     },
   })
 
+
+  // START RECORDING
   const handleStart = async () => {
+
     setPhase('recording')
+
     await start()
   }
 
+
+  // STOP RECORDING
   const handleStop = async () => {
+
     setPhase('stopping')
+
     const audioBase64 = await stop()
+
     endMut.mutate(audioBase64)
   }
 
-  const minutes = Math.floor(recSeconds / 60).toString().padStart(2, '0')
-  const seconds = (recSeconds % 60).toString().padStart(2, '0')
+
+  // TIMER
+  const minutes =
+    Math.floor(recSeconds / 60)
+      .toString()
+      .padStart(2, '0')
+
+  const seconds =
+    (recSeconds % 60)
+      .toString()
+      .padStart(2, '0')
+
 
   return (
+
     <div style={{ padding: '8px 0' }}>
-      {/* Visualizer & Timer Section */}
-      <div style={{ 
-        background: 'var(--surface)', 
-        border: '1px solid var(--border)', 
-        borderRadius: 16, 
-        padding: 24, 
-        marginBottom: 20,
-        boxShadow: 'var(--shadow-sm)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-          <div style={{
-            fontSize: 56, fontWeight: 700, fontFamily: 'DM Sans, monospace',
-            color: isRecording ? '#e74c3c' : 'var(--text-1)',
-            transition: 'color 0.3s',
-            letterSpacing: -1
-          }}>
+
+      {/* TIMER + VISUALIZER */}
+      <div
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 16,
+          padding: 24,
+          marginBottom: 20,
+          boxShadow: 'var(--shadow-sm)'
+        }}
+      >
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: 20
+          }}
+        >
+
+          <div
+            style={{
+              fontSize: 56,
+              fontWeight: 700,
+              fontFamily: 'DM Sans, monospace',
+              color: isRecording
+                ? '#e74c3c'
+                : 'var(--text-1)',
+              transition: 'color 0.3s',
+              letterSpacing: -1
+            }}
+          >
+
             {minutes}:{seconds}
+
           </div>
+
         </div>
 
-        <AudioVisualizer analyser={analyser} isRecording={isRecording} />
-        
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: isRecording ? '#e74c3c' : 'var(--text-3)' }}>
-            {phase === 'idle' && 'READY TO RECORD'}
+
+        <AudioVisualizer
+          analyser={analyser}
+          isRecording={isRecording}
+        />
+
+
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: 12
+          }}
+        >
+
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: isRecording
+                ? '#e74c3c'
+                : 'var(--text-3)'
+            }}
+          >
+
+            {phase === 'idle' &&
+              'READY TO RECORD'}
+
             {phase === 'recording' && (
-              <span className="pulse" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#e74c3c' }} />
+              <span
+                className="pulse"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: '#e74c3c'
+                  }}
+                />
+
                 LIVE RECORDING
+
               </span>
             )}
-            {phase === 'stopping' && 'STOPPING & UPLOADING...'}
-            {phase === 'done' && '✓ SESSION COMPLETE'}
+
+            {phase === 'stopping' &&
+              'PROCESSING AUDIO...'}
+
+            {phase === 'done' &&
+              '✓ SESSION COMPLETE'}
+
           </div>
+
         </div>
+
       </div>
 
-      {/* Transcription Status Info */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 8, 
-        padding: '10px 14px', 
-        background: '#eff6ff', 
-        color: '#2563eb', 
-        borderRadius: 10, 
-        fontSize: 12,
-        marginBottom: 20,
-        border: '1px solid #bfdbfe'
-      }}>
+
+      {/* INFO BOX */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 14px',
+          background: '#eff6ff',
+          color: '#2563eb',
+          borderRadius: 10,
+          fontSize: 12,
+          marginBottom: 20,
+          border: '1px solid #bfdbfe'
+        }}
+      >
+
         <Info size={14} />
-        Audio is captured at 16kHz with HIPAA-compliant encryption.
+
+        Audio is processed using
+        real AI transcription.
+
       </div>
 
-      {/* Live Transcript */}
-      {(phase === 'recording' || phase === 'stopping') && (
-        <div style={{
-          background: 'var(--surface-hover)', border: '1px solid var(--border)',
-          borderRadius: 12, padding: 18, marginBottom: 24,
-          minHeight: 120, maxHeight: 180, overflowY: 'auto', fontSize: 14, lineHeight: 1.6, color: 'var(--text-2)',
-        }}>
+
+      {/* LIVE TRANSCRIPT */}
+      {(phase === 'recording' ||
+        phase === 'stopping') && (
+
+        <div
+          style={{
+            background: 'var(--surface-hover)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: 18,
+            marginBottom: 24,
+            minHeight: 120,
+            maxHeight: 180,
+            overflowY: 'auto',
+            fontSize: 14,
+            lineHeight: 1.6,
+            color: 'var(--text-2)',
+          }}
+        >
+
           {transcript ? (
+
             <div>{transcript}</div>
+
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 20 }}>
-              <Loader2 size={20} className="spin" style={{ color: 'var(--text-4)' }} />
-              <span style={{ color: 'var(--text-4)', fontStyle: 'italic' }}>Listening for speech…</span>
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 20
+              }}
+            >
+
+              <Loader2
+                size={20}
+                className="spin"
+                style={{
+                  color: 'var(--text-4)'
+                }}
+              />
+
+              <span
+                style={{
+                  color: 'var(--text-4)',
+                  fontStyle: 'italic'
+                }}
+              >
+
+                Listening for speech…
+
+              </span>
+
             </div>
           )}
+
         </div>
       )}
 
-      {/* Final Transcript View */}
-      {phase === 'done' && transcription && (
-        <div style={{
-          background: '#f0fdf4', border: '1px solid #bbf7d0',
-          borderRadius: 12, padding: 18, marginBottom: 24, fontSize: 14, lineHeight: 1.6, color: '#166534',
-        }}>
-          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 12, textTransform: 'uppercase', opacity: 0.7 }}>Final Transcript</div>
-          {(transcription as any).transcription_text || 'Compiling final transcription…'}
+
+      {/* FINAL TRANSCRIPT */}
+      {phase === 'done' && transcript && (
+
+        <div
+          style={{
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: 12,
+            padding: 18,
+            marginBottom: 24,
+            fontSize: 14,
+            lineHeight: 1.6,
+            color: '#166534',
+          }}
+        >
+
+          <div
+            style={{
+              fontWeight: 700,
+              marginBottom: 8,
+              fontSize: 12,
+              textTransform: 'uppercase',
+              opacity: 0.7
+            }}
+          >
+
+            Final Transcript
+
+          </div>
+
+          {transcript}
+
         </div>
       )}
 
-      {/* Main Action Controls */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
+
+      {/* BUTTONS */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center'
+        }}
+      >
+
         {phase === 'idle' && (
+
           <button
             onClick={handleStart}
             className="btn btn-primary"
-            style={{ padding: '14px 40px', borderRadius: 12, fontSize: 15 }}
+            style={{
+              padding: '14px 40px',
+              borderRadius: 12,
+              fontSize: 15
+            }}
           >
-            <Mic size={18} /> Start Session
+
+            <Mic size={18} />
+
+            Start Session
+
           </button>
         )}
+
+
         {phase === 'recording' && (
+
           <button
             onClick={handleStop}
             style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '14px 40px',
-              background: '#e74c3c', color: '#fff', border: 'none', borderRadius: 12,
-              fontSize: 15, fontWeight: 600, cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(231, 76, 60, 0.3)'
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '14px 40px',
+              background: '#e74c3c',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 12,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow:
+                '0 4px 12px rgba(231, 76, 60, 0.3)'
             }}
           >
-            <StopCircle size={18} /> Stop & Generate SOAP
+
+            <StopCircle size={18} />
+
+            Stop & Generate SOAP
+
           </button>
         )}
+
+
         {phase === 'stopping' && (
-          <button disabled style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '14px 40px',
-            background: 'var(--border)', color: 'var(--text-3)', border: 'none', borderRadius: 12,
-            fontSize: 15, fontWeight: 600, cursor: 'not-allowed',
-          }}>
-            <Loader2 size={18} className="spin" /> Processing Audio...
+
+          <button
+            disabled
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '14px 40px',
+              background: 'var(--border)',
+              color: 'var(--text-3)',
+              border: 'none',
+              borderRadius: 12,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'not-allowed',
+            }}
+          >
+
+            <Loader2
+              size={18}
+              className="spin"
+            />
+
+            Processing Audio...
+
           </button>
         )}
+
       </div>
+
     </div>
   )
 }

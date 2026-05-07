@@ -32,7 +32,7 @@ export const consultationsApi = {
   /** Trigger AI SOAP generation from consultation transcript */
   generateSoap: (id: string) =>
     apiClient.post(`/consultations/${id}/generate-soap`).then((r) => r.data),
-
+  
   update: (id: string, data: any) =>
     apiClient.put(`/consultations/${id}`, data).then((r) => r.data),
 

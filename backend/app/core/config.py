@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     AZURE_SPEECH_KEY: Optional[str] = os.getenv("AZURE_SPEECH_KEY")
     AZURE_SPEECH_REGION: Optional[str] = os.getenv("AZURE_SPEECH_REGION", "eastus")
     ENDPOINT: Optional[str] = os.getenv("ENDPOINT")
+    ASSEMBLYAI_API_KEY: Optional[str] = os.getenv("ASSEMBLYAI_API_KEY")
     
     # File Uploads
     UPLOAD_DIR: str = "uploads"

@@ -4,14 +4,19 @@ from app.core.config import settings
 
 OPENAI_API_KEY = settings.OPENAI_API_KEY
 ENDPOINT = settings.ENDPOINT
+print("OPENAI_API_KEY:", OPENAI_API_KEY)
+print("ENDPOINT:", ENDPOINT)
 
 def generate_soap(text: str):
-    if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-mock-key":
+
+    # Fallback if no AI key
+    if not OPENAI_API_KEY or not ENDPOINT:
+
         return json.dumps({
-            "subjective": "Patient reports feeling fatigued and has a mild cough for the past 3 days.",
-            "objective": "Temperature is 98.6F. Lungs are clear to auscultation. Throat is slightly erythematous.",
-            "assessment": "1. Viral upper respiratory infection.\n2. Fatigue secondary to illness.",
-            "plan": "1. Rest and hydrate.\n2. Over-the-counter throat lozenges.\n3. Return to clinic if symptoms worsen.",
+            "subjective": text,
+            "objective": "",
+            "assessment": "",
+            "plan": "",
             "medications": [],
             "follow_up_needed": False,
             "follow_up_days": None
@@ -26,32 +31,88 @@ def generate_soap(text: str):
         "messages": [
             {
                 "role": "system",
-                "content": "Convert medical text into SOAP format in JSON with keys: subjective, objective, assessment, plan"
+                "content": (
+                    "You are a medical AI assistant. "
+                    "Convert the consultation transcript into SOAP format. "
+                    "Return ONLY valid JSON with keys: "
+                    "subjective, objective, assessment, plan, medications, "
+                    "follow_up_needed, follow_up_days"
+                )
             },
             {
                 "role": "user",
                 "content": text
             }
-        ]
+        ],
+        "temperature": 0.2,
+        "max_tokens": 800
     }
 
-    response = requests.post(ENDPOINT, headers=headers, json=body)
-    if response.status_code != 200:
-        return '{"subjective": "Error generating", "objective": "", "assessment": "", "plan": ""}'
+    try:
 
-    data = response.json()
-    content = data["choices"][0]["message"]["content"].strip()
-    if content.startswith("```json"): content = content[7:]
-    elif content.startswith("```"): content = content[3:]
-    if content.endswith("```"): content = content[:-3]
-    return content.strip()
+        response = requests.post(
+            ENDPOINT,
+            headers=headers,
+            json=body,
+            timeout=60
+        )
 
-def compare_medical_reports(existing_soap: dict, new_analysis: dict):
-    if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-mock-key":
+        print("SOAP STATUS:", response.status_code)
+        print("SOAP RESPONSE:", response.text)
+
+        if response.status_code != 200:
+
+            return json.dumps({
+                "subjective": f"AI Error {response.status_code}",
+                "objective": response.text,
+                "assessment": "",
+                "plan": "",
+                "medications": [],
+                "follow_up_needed": False,
+                "follow_up_days": None
+            })
+
+        data = response.json()
+
+        content = data["choices"][0]["message"]["content"].strip()
+
+        # Remove markdown wrappers
+        if content.startswith("```json"):
+            content = content[7:]
+
+        elif content.startswith("```"):
+            content = content[3:]
+
+        if content.endswith("```"):
+            content = content[:-3]
+
+        return content.strip()
+
+    except Exception as e:
+
+        print("SOAP AI ERROR:", str(e))
+
+        return json.dumps({
+            "subjective": f"Exception: {str(e)}",
+            "objective": "",
+            "assessment": "",
+            "plan": "",
+            "medications": [],
+            "follow_up_needed": False,
+            "follow_up_days": None
+        })
+
+
+def compare_medical_reports(
+    existing_soap: dict,
+    new_analysis: dict
+):
+
+    if not OPENAI_API_KEY or not ENDPOINT:
         return {
-            "summary": "Comparison simulated. No major conflicts detected.",
-            "discrepancies": ["Dosage of Paracetamol differs slightly."],
-            "new_info": ["Patient mentioned a previous allergy to Penicillin which was not in old records."],
+            "summary": "AI comparison unavailable",
+            "discrepancies": [],
+            "new_info": [],
             "conflicts": []
         }
 
@@ -61,44 +122,89 @@ def compare_medical_reports(existing_soap: dict, new_analysis: dict):
     }
 
     prompt = f"""
-    Compare these two clinical reports for the same patient.
-    Existing Record: {json.dumps(existing_soap)}
-    New AI Analysis: {json.dumps(new_analysis)}
-    
-    Identify:
-    1. Summary of changes.
-    2. Discrepancies (conflicting data).
-    3. New information found in the analysis but missing in old records.
-    4. Critical conflicts.
-    
-    Return ONLY JSON with keys: summary, discrepancies, new_info, conflicts.
+    Compare these two medical reports.
+
+    Existing Report:
+    {json.dumps(existing_soap)}
+
+    New Report:
+    {json.dumps(new_analysis)}
+
+    Return ONLY JSON:
+    {{
+        "summary": "",
+        "discrepancies": [],
+        "new_info": [],
+        "conflicts": []
+    }}
     """
 
     body = {
         "messages": [
-            {"role": "system", "content": "You are a clinical auditor. Compare medical reports accurately."},
-            {"role": "user", "content": prompt}
-        ]
+            {
+                "role": "system",
+                "content": "You are a clinical medical auditor."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": 0.2,
+        "max_tokens": 600
     }
 
-    response = requests.post(ENDPOINT, headers=headers, json=body)
-    if response.status_code != 200:
-        return {"summary": "Error comparing", "discrepancies": [], "new_info": [], "conflicts": []}
-
-    content = response.json()["choices"][0]["message"]["content"].strip()
-    if content.startswith("```json"): content = content[7:]
-    elif content.startswith("```"): content = content[3:]
-    if content.endswith("```"): content = content[:-3]
     try:
+
+        response = requests.post(
+            ENDPOINT,
+            headers=headers,
+            json=body,
+            timeout=60
+        )
+
+        print("COMPARE STATUS:", response.status_code)
+        print("COMPARE RESPONSE:", response.text)
+
+        if response.status_code != 200:
+            return {
+                "summary": "Comparison failed",
+                "discrepancies": [],
+                "new_info": [],
+                "conflicts": []
+            }
+
+        data = response.json()
+
+        content = data["choices"][0]["message"]["content"].strip()
+
+        if content.startswith("```json"):
+            content = content[7:]
+
+        elif content.startswith("```"):
+            content = content[3:]
+
+        if content.endswith("```"):
+            content = content[:-3]
+
         return json.loads(content)
-    except:
-        return {"summary": "Parse error in comparison", "discrepancies": [], "new_info": [], "conflicts": []}
+
+    except Exception as e:
+
+        print("COMPARE ERROR:", str(e))
+
+        return {
+            "summary": f"Exception: {str(e)}",
+            "discrepancies": [],
+            "new_info": [],
+            "conflicts": []
+        }
+
 
 def check_drug_interactions(medications: list):
-    if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-mock-key":
-        return [
-            {"severity": "High", "interaction": "Warfarin and Aspirin", "reason": "Increased risk of bleeding."}
-        ]
+
+    if not OPENAI_API_KEY or not ENDPOINT:
+        return []
 
     headers = {
         "api-key": OPENAI_API_KEY,
@@ -106,27 +212,67 @@ def check_drug_interactions(medications: list):
     }
 
     prompt = f"""
-    Check for potential drug-drug interactions in this list: {json.dumps(medications)}
-    Identify severity (High/Medium/Low), the interacting pair, and a brief reason.
-    Return ONLY JSON list of objects: [{{"severity": "...", "interaction": "...", "reason": "..."}}]
+    Check for drug interactions in this medication list:
+
+    {json.dumps(medications)}
+
+    Return ONLY JSON array:
+    [
+        {{
+            "severity": "",
+            "interaction": "",
+            "reason": ""
+        }}
+    ]
     """
 
     body = {
         "messages": [
-            {"role": "system", "content": "You are a clinical pharmacologist. Check interactions accurately."},
-            {"role": "user", "content": prompt}
-        ]
+            {
+                "role": "system",
+                "content": "You are a clinical pharmacologist."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": 0.2,
+        "max_tokens": 500
     }
 
-    response = requests.post(ENDPOINT, headers=headers, json=body)
-    if response.status_code != 200:
-        return []
-
-    content = response.json()["choices"][0]["message"]["content"].strip()
-    if content.startswith("```json"): content = content[7:]
-    elif content.startswith("```"): content = content[3:]
-    if content.endswith("```"): content = content[:-3]
     try:
+
+        response = requests.post(
+            ENDPOINT,
+            headers=headers,
+            json=body,
+            timeout=60
+        )
+
+        print("DRUG STATUS:", response.status_code)
+        print("DRUG RESPONSE:", response.text)
+
+        if response.status_code != 200:
+            return []
+
+        data = response.json()
+
+        content = data["choices"][0]["message"]["content"].strip()
+
+        if content.startswith("```json"):
+            content = content[7:]
+
+        elif content.startswith("```"):
+            content = content[3:]
+
+        if content.endswith("```"):
+            content = content[:-3]
+
         return json.loads(content)
-    except:
+
+    except Exception as e:
+
+        print("DRUG ERROR:", str(e))
+
         return []

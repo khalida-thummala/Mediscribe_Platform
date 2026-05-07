@@ -13,7 +13,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger("mediscribe")
-
+print("ACTIVE DATABASE:", settings.DATABASE_URL)
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Production-grade healthcare documentation platform",
@@ -70,3 +70,7 @@ app.include_router(api_v1)
 @app.get("/")
 def read_root():
     return {"message": "MediScribe Backend API is running.", "docs": "/docs"}
+
+print("CREATING TABLES...")
+Base.metadata.create_all(bind=engine)
+print("TABLES CREATED")

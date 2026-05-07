@@ -1,155 +1,301 @@
-import { useRef, useCallback, useEffect, useState } from 'react'
-import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk'
-import { useConsultationStore } from '@/store/consultationStore'
+import {
+  useRef,
+  useCallback,
+  useEffect,
+  useState
+} from 'react'
+
 import toast from 'react-hot-toast'
 
-export function useRecording() {
-  const { isRecording, startRecording, stopRecording, tick, appendTranscript } = useConsultationStore()
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  
-  const recognizerRef = useRef<SpeechSDK.SpeechRecognizer | null>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  
-  const [audioBase64, setAudioBase64] = useState<string | null>(null)
-  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
+import { useConsultationStore } from '@/store/consultationStore'
 
+
+export function useRecording() {
+
+  const {
+    isRecording,
+    startRecording,
+    stopRecording,
+    tick,
+    appendTranscript
+  } = useConsultationStore()
+
+  const timerRef =
+    useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const mediaRecorderRef =
+    useRef<MediaRecorder | null>(null)
+
+  const audioChunksRef =
+    useRef<Blob[]>([])
+
+  const audioContextRef =
+    useRef<AudioContext | null>(null)
+
+  const analyserRef =
+    useRef<AnalyserNode | null>(null)
+
+  const [audioBase64, setAudioBase64] =
+    useState<string | null>(null)
+
+  const [analyser, setAnalyser] =
+    useState<AnalyserNode | null>(null)
+
+
+
+  // START RECORDING
   const start = useCallback(async () => {
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true
-        } 
+
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        })
+
+      // Audio Visualization
+      const audioContext = new (
+        window.AudioContext ||
+        (window as any).webkitAudioContext
+      )({
+        sampleRate: 16000
       })
-      
-      // Setup Web Audio API for Visualization
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 })
-      const source = audioContext.createMediaStreamSource(stream)
-      const analyserNode = audioContext.createAnalyser()
+
+      const source =
+        audioContext.createMediaStreamSource(stream)
+
+      const analyserNode =
+        audioContext.createAnalyser()
+
       analyserNode.fftSize = 256
+
       source.connect(analyserNode)
-      
+
       audioContextRef.current = audioContext
+
       analyserRef.current = analyserNode
+
       setAnalyser(analyserNode)
 
-      // Start MediaRecorder
+      // Reset audio chunks
       audioChunksRef.current = []
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+
+      // Create media recorder
+      const mediaRecorder = new MediaRecorder(
+        stream,
+        {
+          mimeType: 'audio/webm'
+        }
+      )
+
+      mediaRecorder.ondataavailable = (event) => {
+
+        if (event.data.size > 0) {
+
+          audioChunksRef.current.push(event.data)
+        }
       }
-      mediaRecorder.start(1000) // Collect chunks every second
+
+      mediaRecorder.start(1000)
+
       mediaRecorderRef.current = mediaRecorder
 
-      // Start Azure Speech
-      const speechKey = (import.meta as any).env.VITE_AZURE_SPEECH_KEY
-      const speechRegion = (import.meta as any).env.VITE_AZURE_SPEECH_REGION
-
-      if (speechKey && speechRegion) {
-        // ... (Azure SDK logic remains as is)
-        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(speechKey, speechRegion)
-        speechConfig.speechRecognitionLanguage = 'en-US'
-        speechConfig.setServiceProperty("punctuation", "true", SpeechSDK.ServicePropertyChannel.UriQueryParameter)
-        const internalAudioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput()
-        const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, internalAudioConfig)
-        
-        recognizer.recognized = (_, e) => {
-          if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-            appendTranscript(e.result.text)
-          }
-        }
-        
-        recognizer.startContinuousRecognitionAsync()
-        recognizerRef.current = recognizer
-      } else {
-        console.warn('Azure Speech credentials not provided. Enabling Live Simulation Mode.')
-        // SIMULATION ENGINE: Append medical phrases every few seconds
-        const simulationPhrases = [
-          "Patient presents with intermittent chest tightness...",
-          "Symptoms worsened during physical exertion over the weekend.",
-          "Blood pressure was recorded at 145 over 90 today.",
-          "Recommending a follow-up EKG and lipid panel.",
-          "Patient has no known drug allergies.",
-          "Will start low-dose aspirin therapy immediately."
-        ]
-        
-        let phraseIndex = 0
-        const simInterval = window.setInterval(() => {
-          if (phraseIndex < simulationPhrases.length) {
-            appendTranscript(simulationPhrases[phraseIndex])
-            phraseIndex++
-          }
-        }, 4000)
-        
-        // Store interval to clear on stop
-        ;(window as any)._simInterval = simInterval
-      }
-
       startRecording()
-      timerRef.current = window.setInterval(tick, 1000)
-    } catch (err) {
-      console.error('Error starting recording:', err)
+
+      timerRef.current =
+        window.setInterval(tick, 1000)
+
+      console.log('Recording started')
+
+    } catch (error) {
+
+      console.error('Recording error:', error)
+
       toast.error('Could not access microphone')
     }
-  }, [appendTranscript, startRecording, tick])
 
+  }, [startRecording, tick])
+
+
+
+  // STOP RECORDING
   const stop = useCallback((): Promise<string> => {
+
     return new Promise((resolve) => {
+
       stopRecording()
-      if (timerRef.current) window.clearInterval(timerRef.current)
-      
-      // Clear simulation if active
-      if ((window as any)._simInterval) {
-        window.clearInterval((window as any)._simInterval)
-        delete (window as any)._simInterval
+
+      // Stop timer
+      if (timerRef.current) {
+
+        window.clearInterval(timerRef.current)
       }
 
-      if (recognizerRef.current) {
-        recognizerRef.current.stopContinuousRecognitionAsync(() => {
-          recognizerRef.current?.close()
-          recognizerRef.current = null
-        })
-      }
-
+      // Close audio context
       if (audioContextRef.current) {
+
         audioContextRef.current.close()
+
         audioContextRef.current = null
+
         setAnalyser(null)
       }
 
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-          const reader = new FileReader()
-          reader.readAsDataURL(audioBlob)
-          reader.onloadend = () => {
-            const base64String = (reader.result as string).split(',')[1]
-            setAudioBase64(base64String)
-            resolve(base64String)
+      // Stop recording
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== 'inactive'
+      ) {
+
+        mediaRecorderRef.current.onstop = async () => {
+
+          try {
+
+            // Create audio blob
+            const audioBlob = new Blob(
+              audioChunksRef.current,
+              {
+                type: 'audio/webm'
+              }
+            )
+
+            // Convert to base64
+            const reader = new FileReader()
+
+            reader.readAsDataURL(audioBlob)
+
+            reader.onloadend = async () => {
+
+              const base64String =
+                (reader.result as string).split(',')[1]
+
+              setAudioBase64(base64String)
+
+              // Send to backend
+              const formData = new FormData()
+
+              formData.append(
+                'file',
+                audioBlob,
+                'recording.webm'
+              )
+
+              try {
+
+                const response = await fetch(
+                  'http://127.0.0.1:8000/api/v1/speech/transcribe',
+                  {
+                    method: 'POST',
+                    body: formData
+                  }
+                )
+
+                const data = await response.json()
+
+                console.log('TRANSCRIPTION:', data)
+
+                if (data.transcription) {
+
+                  appendTranscript(
+                    data.transcription
+                  )
+
+                  toast.success(
+                    'Transcription completed'
+                  )
+
+                } else {
+
+                  toast.error(
+                    'No transcription returned'
+                  )
+                }
+
+              } catch (error) {
+
+                console.error(
+                  'Transcription API error:',
+                  error
+                )
+
+                toast.error(
+                  'Backend transcription failed'
+                )
+              }
+
+              resolve(base64String)
+            }
+
+          } catch (error) {
+
+            console.error(
+              'Audio processing error:',
+              error
+            )
+
+            toast.error(
+              'Audio processing failed'
+            )
+
+            resolve('')
           }
         }
+
         mediaRecorderRef.current.stop()
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
+
+        mediaRecorderRef.current.stream
+          .getTracks()
+          .forEach(track => track.stop())
+
       } else {
+
         resolve('')
       }
-    })
-  }, [stopRecording])
 
+    })
+
+  }, [stopRecording, appendTranscript])
+
+
+
+  // CLEANUP
   useEffect(() => {
+
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      if (recognizerRef.current) recognizerRef.current.close()
-      if (audioContextRef.current) audioContextRef.current.close()
-      if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+
+      if (timerRef.current) {
+
+        clearInterval(timerRef.current)
+      }
+
+      if (audioContextRef.current) {
+
+        audioContextRef.current.close()
+      }
+
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== 'inactive'
+      ) {
+
+        mediaRecorderRef.current.stop()
+      }
     }
+
   }, [])
 
-  return { isRecording, start, stop, audioBase64, analyser }
+
+
+  return {
+    isRecording,
+    start,
+    stop,
+    audioBase64,
+    analyser
+  }
 }
