@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { patientsApi } from '@/api/patients'
-import { FileText, Download, CheckCircle2, Clock, PenLine, Archive, Edit2 } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+import { FileText, Download, CheckCircle2, Clock, PenLine, Archive, Edit2, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import SOAPEditor from '@/components/soap/SOAPEditor'
@@ -16,12 +17,19 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; border: string;
   archived: { color: '#6b7280', bg: '#f3f4f6', border: '#e5e7eb', icon: Archive,      label: 'Archived' },
 }
 
-export default function ReportList() {
-  const [editSoapId, setEditSoapId] = useState<string | null>(null)
+interface Props {
+  search?: string
+}
 
-  const { data, isLoading } = useQuery({
+export default function ReportList({ search = '' }: Props) {
+  const [editSoapId, setEditSoapId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['reports'],
     queryFn: () => reportsApi.list(),
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   })
 
   const { data: patientsData } = useQuery({
@@ -29,54 +37,73 @@ export default function ReportList() {
     queryFn: () => patientsApi.list(),
   })
 
-  const reports = Array.isArray(data) ? data : (data as any)?.data ?? []
-  const patients = Array.isArray(patientsData) ? patientsData : (patientsData as any)?.data ?? []
-  
+  const allReports: any[] = Array.isArray(data) ? data : (data as any)?.data ?? []
+  const patients: any[] = Array.isArray(patientsData) ? patientsData : (patientsData as any)?.data ?? []
+
   const getPatient = (report: any) => {
     return patients.find((p: any) => p.patient_id === report.patient_id)
   }
 
+  // Apply search filter client-side
+  const reports = search.trim()
+    ? allReports.filter((r: any) => {
+        const patient = getPatient(r)
+        const patientName = patient ? `${patient.first_name} ${patient.last_name}`.toLowerCase() : ''
+        const q = search.toLowerCase()
+        return (
+          r.report_id?.toLowerCase().includes(q) ||
+          patientName.includes(q) ||
+          r.status?.toLowerCase().includes(q)
+        )
+      })
+    : allReports
+
+  const accessToken = useAuthStore((s) => s.accessToken)
+
   const handleExport = async (reportId: string, fmt: 'pdf' | 'docx') => {
     try {
-      const res = await reportsApi.export(reportId, { format: fmt, include_signatures: true, include_metadata: true })
-      
-      const content = [
-        'MediScribe — Clinical SOAP Report',
-        '=====================================',
-        `Report ID : ${res.report_id}`,
-        `Format    : ${res.export_format?.toUpperCase() ?? fmt.toUpperCase()}`,
-        `File      : ${res.file_name ?? 'report'}`,
-        '',
-        'Full report content is available when connected to the production backend.',
-        'Generated via MediScribe AI Platform',
-      ].join('\n')
-      const blob = new Blob([content], { type: 'text/plain' })
+      const apiBase = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+      const res = await fetch(`${apiBase}/reports/${reportId}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ format: fmt }),
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || `Export failed (${res.status})`)
+      }
+
+      const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = res.file_name ?? `report-${reportId}.${fmt}`
+      a.download = `SOAP_Report_${reportId.slice(0, 8)}.${fmt}`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
+
       toast.success(`Report downloaded as ${fmt.toUpperCase()}`)
-    } catch {
-      toast.error('Failed to export report')
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to export report')
     }
   }
 
-  const draftCount    = reports.filter((r: any) => r.status === 'draft').length
-  const approvedCount = reports.filter((r: any) => r.status === 'approved' || r.status === 'signed').length
+  const draftCount    = allReports.filter((r: any) => r.status === 'draft').length
+  const approvedCount = allReports.filter((r: any) => r.status === 'approved' || r.status === 'signed').length
 
   return (
     <div>
       {/* Mini Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
         {[
-          { label: 'Total Reports',    value: reports.length, color: '#7c3aed', bg: '#f5f3ff', icon: FileText },
-          { label: 'Approved / Signed',value: approvedCount,  color: '#059669', bg: '#ecfdf5', icon: CheckCircle2 },
-          { label: 'Drafts Pending',   value: draftCount,     color: '#d97706', bg: '#fffbeb', icon: Clock },
+          { label: 'Total Reports',    value: allReports.length, color: '#7c3aed', bg: '#f5f3ff', icon: FileText },
+          { label: 'Approved / Signed',value: approvedCount,     color: '#059669', bg: '#ecfdf5', icon: CheckCircle2 },
+          { label: 'Drafts Pending',   value: draftCount,        color: '#d97706', bg: '#fffbeb', icon: Clock },
         ].map((s) => {
           const Icon = s.icon
           return (
@@ -106,27 +133,43 @@ export default function ReportList() {
 
       {/* Table Card */}
       <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: 14, margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, color: 'var(--text-2)' }}>
             All SOAP Reports
           </h3>
+          <button
+            onClick={() => refetch()}
+            title="Refresh"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '5px 10px', borderRadius: 7, cursor: 'pointer',
+              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              fontSize: 12, color: 'var(--text-3)',
+            }}
+          >
+            <RefreshCw size={12} /> Refresh
+          </button>
         </div>
 
         {isLoading ? (
           <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 56, borderRadius: 8 }} />)}
+            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 56, borderRadius: 8 }} />)}
           </div>
         ) : reports.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon"><FileText size={40} color="var(--text-4)" /></div>
-            <h3>No reports generated yet</h3>
-            <p>Complete a consultation session to automatically generate SOAP notes.</p>
+            <h3>{search ? 'No reports match your search' : 'No reports generated yet'}</h3>
+            <p>{search ? 'Try a different search term.' : 'Complete a consultation session to automatically generate SOAP notes.'}</p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                {['Report', 'Patient', 'Status', 'Created', 'Actions'].map((h) => (h === 'Actions' ? <th key={h} style={{ textAlign: 'right' }}>{h}</th> : <th key={h}>{h}</th>))}
+                {['Report', 'Patient', 'Status', 'Created', 'Actions'].map((h) => (
+                  h === 'Actions'
+                    ? <th key={h} style={{ textAlign: 'right' }}>{h}</th>
+                    : <th key={h}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -186,16 +229,16 @@ export default function ReportList() {
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 7, justifyContent: 'flex-end' }}>
                         <button
-                          onClick={() => setEditSoapId(r.consultation_id)}
+                          onClick={() => setEditSoapId(r.consultation_id || r.report_id)}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 5,
                             padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
-                            background: '#7c3aed', color: '#fff',
+                            background: r.status === 'approved' ? '#0d9488' : '#7c3aed', color: '#fff',
                             border: 'none', fontSize: 11.5, fontWeight: 600,
                             transition: 'all 0.15s',
                           }}
                         >
-                          <Edit2 size={12} /> Edit
+                          <Edit2 size={12} /> {r.status === 'approved' ? 'View' : 'Edit'}
                         </button>
                         {(['pdf', 'docx'] as const).map((fmt) => (
                           <button
@@ -222,7 +265,7 @@ export default function ReportList() {
         )}
       </div>
 
-      <Modal open={!!editSoapId} onClose={() => setEditSoapId(null)} title="Edit SOAP Report" width={800}>
+      <Modal open={!!editSoapId} onClose={() => { setEditSoapId(null); queryClient.invalidateQueries({ queryKey: ['reports'] }) }} title="Edit SOAP Report" width={800}>
         {editSoapId && (
           <SOAPEditor consultationId={editSoapId} />
         )}
