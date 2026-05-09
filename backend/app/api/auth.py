@@ -80,17 +80,48 @@ def logout(response: Response):
     response.delete_cookie("refresh_token")
     return {"message": "Logged out successfully"}
 
-@router.get("/me", response_model=UserSchema)
+@router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+    return {
+        "user_id": current_user.user_id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "phone": current_user.phone,
+        "license_number": current_user.license_number,
+        "organization_id": str(current_user.organization_id),
+        "role": current_user.role,
+        "status": current_user.status,
+        "email_verified": current_user.email_verified,
+        "twofa_enabled": current_user.twofa_enabled,
+        "timezone": current_user.timezone,
+        "language_preference": current_user.language_preference,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+    }
 
-@router.put("/me", response_model=UserSchema)
+@router.put("/me")
 def update_profile(
     data: dict, 
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    return AuthService.update_profile(db, current_user.user_id, data)
+    updated = AuthService.update_profile(db, current_user.user_id, data)
+    return {
+        "user_id": updated.user_id,
+        "email": updated.email,
+        "full_name": updated.full_name,
+        "phone": updated.phone,
+        "license_number": updated.license_number,
+        "organization_id": str(updated.organization_id),
+        "role": updated.role,
+        "status": updated.status,
+        "email_verified": updated.email_verified,
+        "twofa_enabled": updated.twofa_enabled,
+        "timezone": updated.timezone,
+        "language_preference": updated.language_preference,
+        "created_at": updated.created_at.isoformat() if updated.created_at else None,
+        "last_login": updated.last_login.isoformat() if updated.last_login else None,
+    }
 
 @router.put("/security")
 def update_security(
@@ -107,4 +138,4 @@ class OTPVerify(BaseModel):
 @router.post("/verify-otp")
 def verify_otp(data: OTPVerify, db: Session = Depends(get_db)):
     return AuthService.verify_otp(db, data.user_id, data.otp)
-
+

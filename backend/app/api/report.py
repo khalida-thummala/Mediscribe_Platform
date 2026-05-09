@@ -1,34 +1,73 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional, Any, Dict
 from app.db.deps import get_db
 from app.schemas.report import SoapReport, SoapReportCreate, SoapReportUpdate
 from app.core.deps import get_current_user
 from app.services.report_service import ReportService
 from app.core.roles import require_role
 from app.models.report import Report
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("", response_model=SoapReport)
-def create_report(
-    data: SoapReportCreate,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    return ReportService.create_report(
-        db, data, current_user.user_id, current_user.organization_id
-    )
+def _serialize_report(r: Report) -> dict:
+    """Safely serialize a Report ORM object to a dict."""
+    return {
+        "report_id": r.report_id,
+        "consultation_id": r.consultation_id,
+        "patient_id": r.patient_id,
+        "user_id": r.user_id,
+        "organization_id": r.organization_id,
+        "subjective": r.subjective,
+        "objective": r.objective,
+        "assessment": r.assessment,
+        "plan": r.plan,
+        "medications": r.medications,
+        "key_entities": r.key_entities,
+        "follow_up_needed": r.follow_up_needed,
+        "follow_up_days": r.follow_up_days,
+        "status": r.status or "draft",
+        "approved_by": r.approved_by,
+        "approved_at": r.approved_at.isoformat() if r.approved_at else None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+    }
 
-@router.get("", response_model=List[SoapReport])
+@router.get("")
 def list_reports(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    return db.query(Report).filter(
-        Report.organization_id == current_user.organization_id
-    ).order_by(Report.created_at.desc()).all()
+    """List all reports for the current user's organization, newest first."""
+    try:
+        reports = (
+            db.query(Report)
+            .filter(Report.organization_id == current_user.organization_id)
+            .order_by(Report.created_at.desc())
+            .all()
+        )
+        return [_serialize_report(r) for r in reports]
+    except Exception as e:
+        logger.error(f"Error listing reports: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/consultation/{consultation_id}")
+def get_report_by_consultation(
+    consultation_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    report = ReportService.get_report_by_consultation(
+        db, consultation_id, current_user.organization_id
+    )
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return _serialize_report(report)
 
 @router.get("/{report_id}")
 def get_report(
@@ -42,22 +81,9 @@ def get_report(
     ).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    return report
+    return _serialize_report(report)
 
-@router.get("/consultation/{consultation_id}", response_model=SoapReport)
-def get_report_by_consultation(
-    consultation_id: str,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-    report = ReportService.get_report_by_consultation(
-        db, consultation_id, current_user.organization_id
-    )
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-    return report
-
-@router.put("/{report_id}", response_model=SoapReport)
+@router.put("/{report_id}")
 def update_report(
     report_id: str,
     data: SoapReportUpdate,
@@ -67,7 +93,7 @@ def update_report(
     report = ReportService.update_report(db, report_id, data, current_user.organization_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    return report
+    return _serialize_report(report)
 
 @router.post("/{report_id}/finalize")
 def finalize_report(
@@ -80,7 +106,7 @@ def finalize_report(
     )
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    return report
+    return _serialize_report(report)
 
 @router.post("/{report_id}/approve")
 def approve_report(
@@ -103,8 +129,9 @@ def approve_report(
     report.approved_at = datetime.now(timezone.utc)
 
     db.commit()
+    db.refresh(report)
 
-    return {"message": "Report approved"}
+    return _serialize_report(report)
 
 @router.post("/{report_id}/sign")
 def sign_report(
@@ -153,27 +180,55 @@ def archive_report(
 @router.post("/{report_id}/export")
 def export_report(
     report_id: str,
+    data: dict = {},
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Returns report data for frontend export."""
+    """Generate and stream a real PDF or DOCX file."""
+    from fastapi.responses import StreamingResponse
+    from app.services.export_service import ExportService
+    from app.models.patient import Patient
+    from app.models.user import User
+    import io
+
     report = db.query(Report).filter(
         Report.report_id == report_id,
         Report.organization_id == current_user.organization_id
     ).first()
-
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    return {
-        "report_id": report.report_id,
-        "subjective": report.subjective,
-        "objective": report.objective,
-        "assessment": report.assessment,
-        "plan": report.plan,
-        "medications": report.medications,
-        "status": report.status,
-        "created_at": report.created_at.isoformat() if report.created_at else None,
-        "download_url": "#", # Simulated
-        "file_name": f"SOAP_Report_{report_id[:8]}.pdf"
-    }
+    # Get doctor and patient (fall back gracefully if missing)
+    doctor = db.query(User).filter(User.user_id == report.user_id).first() or current_user
+    patient = db.query(Patient).filter(Patient.patient_id == report.patient_id).first() if report.patient_id else None
+
+    # Create a minimal stub patient if not linked
+    if patient is None:
+        class _StubPatient:
+            full_name = "Unlinked Patient"
+            first_name = "Unlinked"
+            last_name = "Patient"
+            patient_id = report.patient_id or "N/A"
+        patient = _StubPatient()
+
+    fmt = (data.get("format") or "pdf").lower()
+    safe_id = report_id[:8]
+
+    try:
+        if fmt == "docx":
+            file_bytes = ExportService.generate_docx_bytes(report, doctor, patient)
+            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            filename = f"SOAP_Report_{safe_id}.docx"
+        else:
+            file_bytes = ExportService.generate_pdf_bytes(report, doctor, patient)
+            media_type = "application/pdf"
+            filename = f"SOAP_Report_{safe_id}.pdf"
+
+        return StreamingResponse(
+            io.BytesIO(file_bytes),
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        logger.error(f"Export failed for report {report_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")

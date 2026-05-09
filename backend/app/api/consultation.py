@@ -18,6 +18,7 @@ from app.core.roles import require_role
 from app.core.ai import generate_soap
 from app.core.speech import transcribe_audio
 from app.services.consultation_service import ConsultationService
+from app.services.export_service import ExportService
 import json
 import uuid
 
@@ -111,7 +112,9 @@ async def end_consultation(
 
     os.makedirs("uploads", exist_ok=True)
 
-    file_path = f"uploads/{audio.filename}"
+    # Use a unique filename to avoid concurrent recording overwrites
+    ext = os.path.splitext(audio.filename or "recording.webm")[1] or ".webm"
+    file_path = f"uploads/{consultation_id}{ext}"
 
     with open(file_path, "wb") as buffer:
         buffer.write(await audio.read())
@@ -133,7 +136,15 @@ async def end_consultation(
         "consultation_id": consultation.consultation_id,
         "status": consultation.status,
         "transcription_status": consultation.transcription_status,
-        "transcription_text": consultation.transcription_text
+        "transcription_text": consultation.transcription_text,
+        "report_id": (
+            db.query(Report.report_id)
+            .filter(
+                Report.consultation_id == consultation.consultation_id,
+                Report.organization_id == current_user.organization_id
+            )
+            .scalar()
+        )
     }
 @router.post("/{consultation_id}/generate-soap")
 def generate_soap_endpoint(
@@ -142,58 +153,66 @@ def generate_soap_endpoint(
     current_user=Depends(get_current_user)
 ):
     consultation = db.query(Consultation).filter(
-        Consultation.consultation_id == consultation_id
+        Consultation.consultation_id == consultation_id,
+        Consultation.organization_id == current_user.organization_id
     ).first()
 
     if not consultation:
         raise HTTPException(status_code=404, detail="Consultation not found")
 
-    # Check if report already exists
-    existing_report = db.query(Report).filter(Report.consultation_id == consultation_id).first()
-    if existing_report:
-        db.delete(existing_report)
-        db.commit()
+    existing_report = db.query(Report).filter(
+        Report.consultation_id == consultation_id,
+        Report.organization_id == current_user.organization_id
+    ).first()
 
     from app.core.ai import generate_soap, check_drug_interactions
 
-    ai_output = generate_soap(
-        consultation.transcription_text or consultation.chief_complaint or ""
-    )
+    transcript = (consultation.transcription_text or "").strip()
+    if not transcript:
+        raise HTTPException(
+            status_code=400,
+            detail="No transcription found for this consultation"
+        )
+
+    ai_output = generate_soap(transcript)
 
     try:
         soap = json.loads(ai_output)
-        # Check interactions
-        meds = soap.get("medications", [])
-        interactions = check_drug_interactions(meds) if meds else []
     except Exception:
         raise HTTPException(status_code=500, detail="Invalid AI response")
+
+    if soap.get("_error"):
+        raise HTTPException(status_code=502, detail=soap["_error"])
+
+    meds = soap.get("medications", [])
+    interactions = check_drug_interactions(meds) if meds else []
 
     def stringify(val):
         if isinstance(val, (dict, list)):
             return json.dumps(val, indent=2)
         return str(val) if val is not None else ""
 
-    report = Report(
+    report = existing_report or Report(
         consultation_id=consultation_id,
         patient_id=consultation.patient_id,
         user_id=current_user.user_id,
         organization_id=current_user.organization_id,
-
-        subjective=stringify(soap.get("subjective")),
-        objective=stringify(soap.get("objective")),
-        assessment=stringify(soap.get("assessment")),
-        plan=stringify(soap.get("plan")),
-
-        medications=soap.get("medications", []),
-        key_entities={"interactions": interactions},
-        follow_up_needed=soap.get("follow_up_needed", False),
-        follow_up_days=soap.get("follow_up_days"),
-
         status="draft"
     )
 
+    report.subjective = stringify(soap.get("subjective"))
+    report.objective = stringify(soap.get("objective"))
+    report.assessment = stringify(soap.get("assessment"))
+    report.plan = stringify(soap.get("plan"))
+    report.medications = soap.get("medications", [])
+    report.key_entities = {"interactions": interactions}
+    report.follow_up_needed = soap.get("follow_up_needed", False)
+    report.follow_up_days = soap.get("follow_up_days")
 
-    db.add(report)
+    if not existing_report:
+        db.add(report)
+
+    consultation.status = "completed"
     db.commit()
     db.refresh(report)
 
@@ -205,7 +224,10 @@ def get_consultation_report(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    report = db.query(Report).filter(Report.consultation_id == consultation_id).first()
+    report = db.query(Report).filter(
+        Report.consultation_id == consultation_id,
+        Report.organization_id == current_user.organization_id
+    ).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return report
@@ -218,9 +240,28 @@ def update_consultation_report(
     db: Session = Depends(get_db),
     current_user=Depends(require_role(["admin", "practitioner"]))
 ):
-    report = db.query(Report).filter(Report.consultation_id == consultation_id).first()
+    consultation = db.query(Consultation).filter(
+        Consultation.consultation_id == consultation_id,
+        Consultation.organization_id == current_user.organization_id
+    ).first()
+
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+
+    report = db.query(Report).filter(
+        Report.consultation_id == consultation_id,
+        Report.organization_id == current_user.organization_id
+    ).first()
+
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+        report = Report(
+            consultation_id=consultation_id,
+            patient_id=consultation.patient_id,
+            user_id=current_user.user_id,
+            organization_id=current_user.organization_id,
+            status="draft"
+        )
+        db.add(report)
 
     for key, value in data.items():
         if hasattr(report, key):
@@ -237,15 +278,41 @@ def approve_consultation_report(
     db: Session = Depends(get_db),
     current_user=Depends(require_role(["admin", "practitioner"]))
 ):
-    report = db.query(Report).filter(Report.consultation_id == consultation_id).first()
+    consultation = db.query(Consultation).filter(
+        Consultation.consultation_id == consultation_id,
+        Consultation.organization_id == current_user.organization_id
+    ).first()
+
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+
+    report = db.query(Report).filter(
+        Report.consultation_id == consultation_id,
+        Report.organization_id == current_user.organization_id
+    ).first()
+
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+        report = Report(
+            consultation_id=consultation_id,
+            patient_id=consultation.patient_id,
+            user_id=current_user.user_id,
+            organization_id=current_user.organization_id,
+            status="draft"
+        )
+        db.add(report)
+
+    for key in ("subjective", "objective", "assessment", "plan", "medications", "follow_up_needed", "follow_up_days"):
+        if key in data and hasattr(report, key):
+            setattr(report, key, data[key])
 
     report.status = "approved"
     report.approved_by = current_user.user_id
     report.approved_at = datetime.now(timezone.utc)
 
-from app.services.export_service import ExportService
+    db.commit()
+    db.refresh(report)
+    return report
+
 from app.models.patient import Patient
 from app.models.user import User
 
