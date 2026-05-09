@@ -8,6 +8,10 @@ python-dotenv
 python-multipart
 requests
 openai
-azure-cognitiveservices-speech
 pydantic-settings
 email-validator
+assemblyai
+boto3
+pypdf
+python-docx
+reportlab
