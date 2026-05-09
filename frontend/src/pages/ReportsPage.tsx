@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ReportList from '@/components/reports/ReportList'
-import { FileText, Search, RefreshCw } from 'lucide-react'
+import { FileText, Search,  } from 'lucide-react'
 
 export default function ReportsPage() {
   const [search, setSearch] = useState('')
