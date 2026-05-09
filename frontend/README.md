@@ -1,28 +1,29 @@
-# MediScribe — Healthcare Documentation Platform
+# MediScribe — Frontend
 
-**Production-grade AI-powered clinical documentation system**
+AI-powered clinical documentation platform that auto-generates SOAP notes from doctor-patient consultations using speech-to-text and GPT-4.
 
 ## Features
-- 🎙 **Live Consultation Recording** — Azure Speech + real-time transcription
-- 📋 **SOAP Note Editor** — AI-generated with GPT-4, inline editing, e-signature
-- ✦ **AI Report Analysis** — Upload PDFs/DOCX, extract entities, compare & approve
-- 👥 **Patient Management** — Full CRUD, MRN, medical history
-- 📄 **Report Export** — PDF/DOCX, digital signature, email delivery
-- 📊 **Analytics Dashboard** — KPIs, trends, AI accuracy tracking
-- 🛡 **Audit Trail** — HIPAA-compliant event logging, AES-256 encrypted
-- ⚙ **Settings** — 2FA, integrations (Azure, GPT-4, EHR FHIR), billing
+
+- 🎙 **Live Consultation Recording** — real-time audio recording with AssemblyAI transcription
+- 📋 **SOAP Note Editor** — AI-generated notes with inline editing and approval workflow
+- 🤖 **AI Document Analysis** — upload PDFs/images for clinical review and entity extraction
+- 👥 **Patient Management** — full CRUD with medical history
+- 📄 **Reports Page** — view all generated reports with PDF & DOCX export
+- 📊 **Analytics Dashboard** — KPIs, consultation trends, time saved
+- 🛡 **Audit Trail** — event logging for all clinical actions
+- ⚙ **Settings** — profile management, security, organization
 
 ## Tech Stack
+
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 + TypeScript + Vite |
+| Framework | React 18 + TypeScript + Vite |
 | Routing | React Router v6 |
-| State | Zustand |
+| State | Zustand (persisted auth store) |
 | Data Fetching | TanStack Query v5 |
-| Forms | React Hook Form + Zod |
 | Styling | Tailwind CSS v3 + CSS Variables |
+| HTTP | Axios with JWT interceptors + auto-refresh |
 | Notifications | React Hot Toast |
-| HTTP | Axios (JWT interceptors, auto-refresh) |
 
 ## Getting Started
 
@@ -30,9 +31,9 @@
 # Install dependencies
 npm install
 
-# Copy environment variables
+# Set environment variables
 cp .env.example .env
-# Fill in VITE_API_BASE_URL, VITE_AZURE_SPEECH_KEY, etc.
+# Set VITE_API_BASE_URL=http://localhost:8000/api/v1
 
 # Start development server
 npm run dev
@@ -41,45 +42,31 @@ npm run dev
 npm run build
 ```
 
-## Project Structure
-```
-src/
-├── api/              # Axios API clients (auth, patients, consultations…)
-├── components/
-│   └── shared/       # AppLayout, Sidebar, Topbar, Modal, Badge, StatCard
-├── hooks/            # useRecording (Azure Speech abstraction)
-├── pages/            # One file per route/module
-├── store/            # Zustand stores (auth, ui, consultation)
-├── styles/           # globals.css (Tailwind + CSS vars)
-├── types/            # Full TypeScript interfaces
-└── utils/            # cn(), formatDate(), calcAge()…
-```
-
 ## Environment Variables
+
 | Variable | Description |
 |---|---|
-| `VITE_API_BASE_URL` | FastAPI backend base URL |
-| `VITE_AZURE_SPEECH_KEY` | Azure Cognitive Services key |
-| `VITE_AZURE_SPEECH_REGION` | Azure region (e.g. eastus) |
+| `VITE_API_BASE_URL` | FastAPI backend base URL (default: `http://localhost:8000/api/v1`) |
 
-## Compliance
-- HIPAA-compliant data handling
-- GDPR user rights support
-- AES-256 encryption at rest
-- TLS 1.3 in transit
-- Role-based access control (RBAC)
-- Full audit trail for all PHI access
+## Project Structure
+
+```
+src/
+├── api/          # Axios API clients (auth, reports, patients, consultations)
+├── components/   # Shared UI + feature components (settings, reports, soap)
+├── hooks/        # Custom hooks (useRecording)
+├── pages/        # One file per route
+├── store/        # Zustand auth store
+├── styles/       # Global CSS + Tailwind config
+├── types/        # TypeScript interfaces
+└── utils/        # Helper functions
+```
 
 ## Backend
-This frontend is designed to work with a **FastAPI + PostgreSQL** backend.
-See `src/api/` for the full API contract (endpoints, request/response shapes).
-All API calls use JWT authentication with automatic token refresh.
 
-## License
-Proprietary — MediScribe Healthcare Solutions
+Works with the FastAPI + PostgreSQL backend in the `/backend` directory.  
+All API calls use JWT authentication with automatic token refresh.
 
 ## Author
 
-**Thummala Khalida**
-
-Frontend Developer – MediScribe
+**Thummala Khalida** — MediScribe
