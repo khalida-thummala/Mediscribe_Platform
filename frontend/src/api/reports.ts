@@ -11,6 +11,12 @@ export const reportsApi = {
   export: (id: string, options: ExportOptions) =>
     apiClient.post<ExportResult>(`/reports/${id}/export`, options).then((r) => r.data),
 
+  update: (id: string, data: any) =>
+    apiClient.put(`/reports/${id}`, data).then((r) => r.data),
+
+  approve: (id: string) =>
+    apiClient.post(`/reports/${id}/approve`).then((r) => r.data),
+
   sign: (id: string) =>
     apiClient.post(`/reports/${id}/sign`).then((r) => r.data),
 
