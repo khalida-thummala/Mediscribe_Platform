@@ -9,15 +9,14 @@ import toast from 'react-hot-toast'
 
 import { useConsultationStore } from '@/store/consultationStore'
 
-
 export function useRecording() {
 
   const {
     isRecording,
     startRecording,
     stopRecording,
+    appendTranscript,
     tick,
-    appendTranscript
   } = useConsultationStore()
 
   const timerRef =
@@ -26,21 +25,29 @@ export function useRecording() {
   const mediaRecorderRef =
     useRef<MediaRecorder | null>(null)
 
+  const streamRef =
+    useRef<MediaStream | null>(null)
+
   const audioChunksRef =
     useRef<Blob[]>([])
+
+  const recorderMimeTypeRef =
+    useRef('audio/webm')
 
   const audioContextRef =
     useRef<AudioContext | null>(null)
 
-  const analyserRef =
-    useRef<AnalyserNode | null>(null)
+  const speechRecognitionRef =
+    useRef<any>(null)
 
-  const [audioBase64, setAudioBase64] =
-    useState<string | null>(null)
+  const speechRecognitionWantedRef =
+    useRef(false)
+
+  const finalTranscriptRef =
+    useRef('')
 
   const [analyser, setAnalyser] =
     useState<AnalyserNode | null>(null)
-
 
 
   // START RECORDING
@@ -52,19 +59,19 @@ export function useRecording() {
         await navigator.mediaDevices.getUserMedia({
           audio: {
             channelCount: 1,
-            sampleRate: 16000,
             echoCancellation: true,
-            noiseSuppression: true
+            noiseSuppression: true,
+            autoGainControl: true
           }
         })
+
+      streamRef.current = stream
 
       // Audio Visualization
       const audioContext = new (
         window.AudioContext ||
         (window as any).webkitAudioContext
-      )({
-        sampleRate: 16000
-      })
+      )({ sampleRate: 16000 })
 
       const source =
         audioContext.createMediaStreamSource(stream)
@@ -73,229 +80,225 @@ export function useRecording() {
         audioContext.createAnalyser()
 
       analyserNode.fftSize = 256
-
       source.connect(analyserNode)
 
       audioContextRef.current = audioContext
-
-      analyserRef.current = analyserNode
-
       setAnalyser(analyserNode)
 
       // Reset audio chunks
       audioChunksRef.current = []
+      finalTranscriptRef.current = ''
+
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition
+
+      if (SpeechRecognition) {
+        speechRecognitionWantedRef.current = true
+
+        const startLiveRecognition = () => {
+          if (!speechRecognitionWantedRef.current) return
+
+          const recognition = new SpeechRecognition()
+          recognition.continuous = true
+          recognition.interimResults = true
+          recognition.lang = 'en-US'
+
+          recognition.onresult = (event: any) => {
+            let interimTranscript = ''
+
+            for (let i = event.resultIndex; i < event.results.length; i += 1) {
+              const text = event.results[i][0].transcript
+
+              if (event.results[i].isFinal) {
+                finalTranscriptRef.current = `${finalTranscriptRef.current} ${text}`.trim()
+              } else {
+                interimTranscript += text
+              }
+            }
+
+            appendTranscript(
+              `${finalTranscriptRef.current} ${interimTranscript}`.trim()
+            )
+          }
+
+          recognition.onerror = (event: any) => {
+            console.warn('[Recording] Live speech recognition error:', event.error)
+          }
+
+          recognition.onend = () => {
+            speechRecognitionRef.current = null
+
+            if (speechRecognitionWantedRef.current) {
+              window.setTimeout(startLiveRecognition, 300)
+            }
+          }
+
+          try {
+            recognition.start()
+            speechRecognitionRef.current = recognition
+          } catch (error) {
+            console.warn('[Recording] Could not start live speech recognition:', error)
+          }
+        }
+
+        startLiveRecognition()
+      } else {
+        console.warn('[Recording] Live speech recognition is not supported by this browser')
+      }
 
       // Create media recorder
-      const mediaRecorder = new MediaRecorder(
-        stream,
-        {
-          mimeType: 'audio/webm'
-        }
-      )
+      const preferredMimeType = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus'
+      ].find((type) => MediaRecorder.isTypeSupported(type))
+
+      const mediaRecorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream)
+
+      recorderMimeTypeRef.current =
+        mediaRecorder.mimeType || preferredMimeType || 'audio/webm'
+
+      console.log('[Recording] MediaRecorder MIME:', recorderMimeTypeRef.current)
 
       mediaRecorder.ondataavailable = (event) => {
-
         if (event.data.size > 0) {
-
           audioChunksRef.current.push(event.data)
         }
       }
 
       mediaRecorder.start(1000)
-
       mediaRecorderRef.current = mediaRecorder
 
       startRecording()
+      timerRef.current = window.setInterval(tick, 1000)
 
-      timerRef.current =
-        window.setInterval(tick, 1000)
-
-      console.log('Recording started')
+      console.log('[Recording] Started')
 
     } catch (error) {
-
-      console.error('Recording error:', error)
-
+      console.error('[Recording] Error:', error)
       toast.error('Could not access microphone')
     }
 
-  }, [startRecording, tick])
+  }, [appendTranscript, startRecording, tick])
 
 
-
-  // STOP RECORDING
-  const stop = useCallback((): Promise<string> => {
+  // STOP RECORDING — returns the audio Blob
+  const stop = useCallback((): Promise<Blob> => {
 
     return new Promise((resolve) => {
 
       stopRecording()
+      speechRecognitionWantedRef.current = false
 
-      // Stop timer
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.stop()
+        } catch (error) {
+          console.warn('[Recording] Could not stop live speech recognition:', error)
+        }
+        speechRecognitionRef.current = null
+      }
+
       if (timerRef.current) {
-
         window.clearInterval(timerRef.current)
+        timerRef.current = null
       }
 
-      // Close audio context
-      if (audioContextRef.current) {
-
-        audioContextRef.current.close()
-
-        audioContextRef.current = null
-
-        setAnalyser(null)
-      }
-
-      // Stop recording
       if (
         mediaRecorderRef.current &&
         mediaRecorderRef.current.state !== 'inactive'
       ) {
 
-        mediaRecorderRef.current.onstop = async () => {
+        const recorder = mediaRecorderRef.current
+
+        recorder.onstop = async () => {
+
+          // Close AudioContext AFTER MediaRecorder has fully stopped
+          // (closing it before stop() can silence the final chunk)
+          if (audioContextRef.current) {
+            audioContextRef.current.close()
+            audioContextRef.current = null
+            setAnalyser(null)
+          }
 
           try {
 
-            // Create audio blob
             const audioBlob = new Blob(
               audioChunksRef.current,
-              {
-                type: 'audio/webm'
-              }
+              { type: recorderMimeTypeRef.current }
             )
 
-            // Convert to base64
-            const reader = new FileReader()
+            console.log(`[Recording] Stopped. Chunks: ${audioChunksRef.current.length}, Blob size: ${audioBlob.size} bytes`)
 
-            reader.readAsDataURL(audioBlob)
-
-            reader.onloadend = async () => {
-
-              const base64String =
-                (reader.result as string).split(',')[1]
-
-              setAudioBase64(base64String)
-
-              // Send to backend
-              const formData = new FormData()
-
-              formData.append(
-                'file',
-                audioBlob,
-                'recording.webm'
-              )
-
-              try {
-
-                const response = await fetch(
-                  'http://127.0.0.1:8000/api/v1/speech/transcribe',
-                  {
-                    method: 'POST',
-                    body: formData
-                  }
-                )
-
-                const data = await response.json()
-
-                console.log('TRANSCRIPTION:', data)
-
-                if (data.transcription) {
-
-                  appendTranscript(
-                    data.transcription
-                  )
-
-                  toast.success(
-                    'Transcription completed'
-                  )
-
-                } else {
-
-                  toast.error(
-                    'No transcription returned'
-                  )
-                }
-
-              } catch (error) {
-
-                console.error(
-                  'Transcription API error:',
-                  error
-                )
-
-                toast.error(
-                  'Backend transcription failed'
-                )
-              }
-
-              resolve(base64String)
+            if (audioBlob.size < 1000) {
+              console.warn('[Recording] Audio blob is very small — microphone may not have captured audio')
             }
 
+            resolve(audioBlob)
+
           } catch (error) {
-
-            console.error(
-              'Audio processing error:',
-              error
-            )
-
-            toast.error(
-              'Audio processing failed'
-            )
-
-            resolve('')
+            console.error('[Recording] Audio processing error:', error)
+            toast.error('Audio processing failed')
+            resolve(new Blob([], { type: recorderMimeTypeRef.current }))
+          } finally {
+            streamRef.current
+              ?.getTracks()
+              .forEach((track) => track.stop())
+            streamRef.current = null
           }
         }
 
-        mediaRecorderRef.current.stop()
+        if (recorder.state === 'recording') {
+          recorder.requestData()
+        }
 
-        mediaRecorderRef.current.stream
-          .getTracks()
-          .forEach(track => track.stop())
+        recorder.stop()
 
       } else {
 
-        resolve('')
+        // Close AudioContext if MediaRecorder was already inactive
+        if (audioContextRef.current) {
+          audioContextRef.current.close()
+          audioContextRef.current = null
+          setAnalyser(null)
+        }
+
+        resolve(new Blob([], { type: recorderMimeTypeRef.current }))
       }
 
     })
 
-  }, [stopRecording, appendTranscript])
+  }, [stopRecording])
 
 
-
-  // CLEANUP
+  // CLEANUP on unmount
   useEffect(() => {
-
     return () => {
-
-      if (timerRef.current) {
-
-        clearInterval(timerRef.current)
-      }
-
-      if (audioContextRef.current) {
-
-        audioContextRef.current.close()
-      }
-
+      if (timerRef.current) clearInterval(timerRef.current)
+      speechRecognitionWantedRef.current = false
+      if (speechRecognitionRef.current) speechRecognitionRef.current.stop()
+      if (audioContextRef.current) audioContextRef.current.close()
+      streamRef.current
+        ?.getTracks()
+        .forEach((track) => track.stop())
       if (
         mediaRecorderRef.current &&
         mediaRecorderRef.current.state !== 'inactive'
       ) {
-
         mediaRecorderRef.current.stop()
       }
     }
-
   }, [])
-
 
 
   return {
     isRecording,
     start,
     stop,
-    audioBase64,
     analyser
   }
 }
