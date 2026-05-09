@@ -17,16 +17,22 @@ const LoginForm: React.FC = () => {
     setIsSubmitting(true);
     try {
       const authRes = await authApi.login({ email, password });
-      
-      // Map 'id' to 'user_id' to match our User interface
-      const user = {
-        ...authRes.user,
-        user_id: authRes.user.id
-      };
-      
-      // Store tokens and user in one step
-      setAuth(user as any, authRes.access_token, authRes.refresh_token);
-      
+
+      // Temporarily store tokens so getProfile() can use the auth header
+      setAuth(
+        { ...authRes.user, user_id: authRes.user.id } as any,
+        authRes.access_token,
+        authRes.refresh_token
+      );
+
+      // Fetch the full profile (includes phone, license_number, etc.)
+      try {
+        const fullProfile = await authApi.getProfile();
+        setAuth(fullProfile, authRes.access_token, authRes.refresh_token);
+      } catch {
+        // Non-fatal — minimal user object is already stored
+      }
+
       toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
