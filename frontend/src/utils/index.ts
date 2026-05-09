@@ -73,3 +73,66 @@ export function base64ToBlob(base64: string, mimeType = 'audio/webm'): Blob {
   for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i)
   return new Blob([new Uint8Array(byteNums)], { type: mimeType })
 }
+
+/**
+ * Converts a SOAP field value into clean, human-readable text.
+ *
+ * The AI sometimes returns nested JSON objects for SOAP sections
+ * (e.g. subjective = { chief_complaint: "...", history_of_present_illness: "..." }).
+ * This function flattens those into readable "Label: value" lines.
+ *
+ * Handles:
+ *   - Plain strings          → returned as-is
+ *   - JSON-encoded strings   → parsed then formatted
+ *   - Plain objects          → "Key: value" per entry
+ *   - Arrays                 → items joined with newlines
+ *   - null / undefined       → empty string
+ */
+export function formatSoapField(raw: unknown): string {
+  if (raw === null || raw === undefined) return ''
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim()
+    if (!trimmed) return ''
+    // Try to parse as JSON — backend sometimes stores objects as JSON strings
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        return formatSoapField(JSON.parse(trimmed))
+      } catch {
+        return trimmed
+      }
+    }
+    return trimmed
+  }
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => (typeof item === 'object' && item !== null ? formatSoapField(item) : String(item)))
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  if (typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>
+    return Object.entries(obj)
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => {
+        // snake_case / camelCase → Title Case label
+        const label = k
+          .replace(/_/g, ' ')
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+        const value = Array.isArray(v)
+          ? (v as unknown[])
+              .map((item) => (typeof item === 'object' && item !== null ? formatSoapField(item) : String(item)))
+              .join(', ')
+          : typeof v === 'object' && v !== null
+          ? formatSoapField(v)
+          : String(v)
+        return `${label}: ${value}`
+      })
+      .join('\n')
+  }
+
+  return String(raw)
+}
