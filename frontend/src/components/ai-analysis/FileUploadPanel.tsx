@@ -33,7 +33,7 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
         const analyzeRes = await apiClient.post(`/ai-analysis/${uploadData.analysis_id}/analyze`)
         setPhase('done')
         toast.success('AI Analysis complete!')
-        onAnalysisReady(analyzeRes.data.analysis_id)
+        onAnalysisReady(analyzeRes.data?.analysis_id || uploadData.analysis_id)
       } catch {
         setPhase('error')
         toast.error('Analysis failed')

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
-import { CheckCircle, Loader2, FileText, Activity } from 'lucide-react'
+import { CheckCircle, Loader2, FileText, Activity, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ComparisonPanel from './ComparisonPanel'
 
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function AnalysisResultPanel({ analysisId }: Props) {
+  const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'soap' | 'audit'>('soap')
   
   const { data, isLoading } = useQuery({
@@ -19,7 +20,11 @@ export default function AnalysisResultPanel({ analysisId }: Props) {
 
   const approveMut = useMutation({
     mutationFn: () => apiClient.post(`/ai-analysis/${analysisId}/approve`, { notes: 'Approved via UI' }),
-    onSuccess: () => toast.success('Analysis approved and saved'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reports'] })
+      qc.invalidateQueries({ queryKey: ['analysis', analysisId] })
+      toast.success('Analysis approved and saved to Reports')
+    },
     onError: () => toast.error('Failed to approve'),
   })
 
@@ -131,16 +136,45 @@ export default function AnalysisResultPanel({ analysisId }: Props) {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 16, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+        {data.approved_at && (
+          <div style={{ fontSize: 13, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <CheckCircle2 size={14} color="#0e7c4a" />
+            Saved to Reports on {new Date(data.approved_at).toLocaleDateString()}
+          </div>
+        )}
+        
         <button
           onClick={() => approveMut.mutate()}
-          disabled={approveMut.isPending}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 22px', background: '#0e7c4a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13.5, fontWeight: 500, cursor: 'pointer' }}
+          disabled={approveMut.isPending || !!data.approved_at}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 6, 
+            padding: '10px 22px', 
+            background: data.approved_at ? 'var(--surface-hover)' : '#0e7c4a', 
+            color: data.approved_at ? 'var(--text-2)' : '#fff', 
+            border: data.approved_at ? '1px solid var(--border)' : 'none', 
+            borderRadius: 8, 
+            fontSize: 13.5, 
+            fontWeight: 500, 
+            cursor: data.approved_at ? 'default' : 'pointer' 
+          }}
         >
-          <CheckCircle size={15} /> {approveMut.isPending ? 'Approving…' : 'Approve & Save'}
+          <CheckCircle size={15} /> 
+          {approveMut.isPending ? 'Approving…' : data.approved_at ? 'Approved & Saved' : 'Approve & Save to Reports'}
         </button>
+
+        {data.approved_at && (
+          <a 
+            href="/reports" 
+            className="btn btn-outline btn-sm"
+            style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            Go to Reports
+          </a>
+        )}
       </div>
     </div>
   )
 }
-
