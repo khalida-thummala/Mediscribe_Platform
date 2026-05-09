@@ -240,7 +240,7 @@ export default function ReportList({ search = '' }: Props) {
                         >
                           <Edit2 size={12} /> {r.status === 'approved' ? 'View' : 'Edit'}
                         </button>
-                        {(['pdf', 'docx'] as const).map((fmt) => (
+                        {(['pdf'] as const).map((fmt) => (
                           <button
                             key={fmt}
                             onClick={() => handleExport(r.report_id, fmt)}

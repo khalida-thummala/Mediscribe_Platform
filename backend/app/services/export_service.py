@@ -34,23 +34,59 @@ from docx.enum.text import (
 )
 
 
+def _flatten(value, indent: int = 0) -> str:
+    """
+    Recursively convert a nested dict/list into human-readable text.
+
+    dict  → "Key: value" lines (snake_case keys → Title Case)
+    list  → bullet lines joined with newlines
+    str   → returned as-is (after trying to parse as JSON)
+    other → str()
+    """
+    if value is None:
+        return ""
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return ""
+        # Try to parse JSON strings stored by the backend
+        if stripped.startswith("{") or stripped.startswith("["):
+            try:
+                return _flatten(json.loads(stripped), indent)
+            except Exception:
+                pass
+        return stripped
+
+    if isinstance(value, list):
+        parts = []
+        for item in value:
+            flat = _flatten(item, indent)
+            if flat:
+                parts.append(("  " * indent) + flat)
+        return "\n".join(parts)
+
+    if isinstance(value, dict):
+        parts = []
+        for k, v in value.items():
+            if v is None or v == "" or v == [] or v == {}:
+                continue
+            # snake_case → Title Case label
+            label = k.replace("_", " ").title()
+            flat_v = _flatten(v, indent + 1)
+            if "\n" in flat_v:
+                parts.append(("  " * indent) + f"{label}:\n{flat_v}")
+            else:
+                parts.append(("  " * indent) + f"{label}: {flat_v}")
+        return "\n".join(parts)
+
+    return str(value)
+
+
 def _clean(text) -> str:
-
-    if text is None:
-        return "N/A"
-
-    if isinstance(text, (dict, list)):
-
-        try:
-            return json.dumps(
-                text,
-                indent=2
-            )
-
-        except Exception:
-            return str(text)
-
-    return str(text).strip() or "N/A"
+    """Return a human-readable string for any SOAP field value."""
+    result = _flatten(text)
+    return result if result else "N/A"
 
 
 class ExportService:

@@ -4,6 +4,7 @@ import { apiClient } from '@/api/client'
 import { CheckCircle, Loader2, FileText, Activity, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ComparisonPanel from './ComparisonPanel'
+import { formatSoapField } from '@/utils'
 
 interface Props {
   analysisId: string
@@ -110,7 +111,7 @@ export default function AnalysisResultPanel({ analysisId }: Props) {
               <div key={key} style={{ border: `1px solid ${color}30`, borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ background: `${color}10`, padding: '8px 14px', fontSize: 11.5, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
                 <div style={{ padding: '12px 14px', fontSize: 13, lineHeight: 1.7, color: 'var(--text-2)', whiteSpace: 'pre-wrap' }}>
-                  {(data as any)[key] || <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>No content generated</span>}
+                  {formatSoapField((data as any)[key]) || <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>No content generated</span>}
                 </div>
               </div>
             ))}

@@ -21,7 +21,7 @@ const QUICK_ACTIONS = [
   { icon: Stethoscope, title: 'New Consultation',  sub: 'Start recording + transcription', path: '/consultations', color: '#f59e0b', bg: '#fffbeb' },
   { icon: BrainCircuit,title: 'AI Analysis',       sub: 'Upload document for AI review',   path: '/ai-analysis',  color: '#7c3aed', bg: '#f5f3ff' },
   { icon: UserPlus,    title: 'Add Patient',        sub: 'Register a patient record',       path: '/patients',     color: '#10b981', bg: '#ecfdf5' },
-  { icon: Download,    title: 'Export Report',      sub: 'PDF/DOCX with e-signature',      path: '/reports',      color: '#3b82f6', bg: '#eff6ff' },
+  { icon: Download,    title: 'Export Report',      sub: 'Download as PDF',                path: '/reports',      color: '#3b82f6', bg: '#eff6ff' },
 ]
 
 export default function DashboardPage() {
