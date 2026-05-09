@@ -5,6 +5,7 @@ import { reportsApi } from '@/api/reports'
 import { apiClient } from '@/api/client'
 import { Save, CheckCircle, Loader2, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { formatSoapField } from '@/utils'
 
 interface Props {
   consultationId: string
@@ -32,10 +33,10 @@ export default function SOAPEditor({ consultationId }: Props) {
     onSuccess: (data: any) => {
       if (data && !data.error) {
         const loaded = {
-          subjective: data.subjective || '',
-          objective: data.objective || '',
-          assessment: data.assessment || '',
-          plan: data.plan || '',
+          subjective: formatSoapField(data.subjective),
+          objective: formatSoapField(data.objective),
+          assessment: formatSoapField(data.assessment),
+          plan: formatSoapField(data.plan),
         }
         setFields(loaded)
         lastSavedFields.current = JSON.stringify(loaded)
@@ -50,10 +51,10 @@ export default function SOAPEditor({ consultationId }: Props) {
 
     const data = reportData as any
     const loaded = {
-      subjective: data.subjective || '',
-      objective: data.objective || '',
-      assessment: data.assessment || '',
-      plan: data.plan || '',
+      subjective: formatSoapField(data.subjective),
+      objective: formatSoapField(data.objective),
+      assessment: formatSoapField(data.assessment),
+      plan: formatSoapField(data.plan),
     }
 
     setFields(loaded)
@@ -96,7 +97,12 @@ export default function SOAPEditor({ consultationId }: Props) {
     mutationFn: () => (consultationsApi as any).generateSoap?.(consultationId) ?? Promise.reject('Not implemented'),
     onSuccess: (data: any) => {
       if (data && !data.error) {
-        const generated = { subjective: data.subjective || '', objective: data.objective || '', assessment: data.assessment || '', plan: data.plan || '' }
+        const generated = {
+          subjective: formatSoapField(data.subjective),
+          objective: formatSoapField(data.objective),
+          assessment: formatSoapField(data.assessment),
+          plan: formatSoapField(data.plan),
+        }
         setFields(generated)
         lastSavedFields.current = JSON.stringify(generated)
         setReportStatus(data.status || 'draft')
@@ -130,17 +136,41 @@ export default function SOAPEditor({ consultationId }: Props) {
   })
 
   const exportMut = useMutation({
-    mutationFn: () => apiClient.get(`/consultations/${consultationId}/export`).then(r => r.data),
-    onSuccess: (data: any) => {
-      const blob = new Blob([data.content], { type: 'text/plain' })
+    mutationFn: async (fmt: 'pdf' | 'docx' = 'pdf') => {
+      // First get the report_id for this consultation
+      const reportRes = await apiClient.get(`/consultations/${consultationId}/report`)
+      const reportId = reportRes.data?.report_id
+      if (!reportId) throw new Error('No report found for this consultation')
+
+      const apiBase = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+      const token = (await import('@/store/authStore')).useAuthStore.getState().accessToken
+
+      const res = await fetch(`${apiBase}/reports/${reportId}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ format: fmt }),
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || `Export failed (${res.status})`)
+      }
+
+      const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = data.filename || 'report.txt'
+      a.download = `SOAP_Report_${consultationId.slice(0, 8)}.${fmt}`
+      document.body.appendChild(a)
       a.click()
-      toast.success('Report exported successfully')
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
     },
-    onError: () => toast.error('Export failed'),
+    onSuccess: () => toast.success('Report exported successfully'),
+    onError: (e: any) => toast.error(e?.message || 'Export failed'),
   })
 
   const SECTIONS = [
@@ -210,10 +240,11 @@ export default function SOAPEditor({ consultationId }: Props) {
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
         <button
-          onClick={() => exportMut.mutate()}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: reportStatus === 'approved' ? 'not-allowed' : 'pointer', color: 'var(--text-1)', opacity: reportStatus === 'approved' ? 0.65 : 1 }}
+          onClick={() => exportMut.mutate('pdf')}
+          disabled={exportMut.isPending}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', color: 'var(--text-1)' }}
         >
-          <Download size={14} /> Export Report
+          <Download size={14} /> {exportMut.isPending ? 'Exporting…' : 'Export PDF'}
         </button>
         <button
           onClick={() => saveMut.mutate()}
