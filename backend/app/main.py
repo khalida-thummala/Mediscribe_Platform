@@ -57,7 +57,7 @@ from app.api.speech import router as speech_router
 @app.on_event("startup")
 def on_startup():
     logger.info("Starting MediScribe API...")
-    Base.metadata.create_all(bind=engine)
+    #Base.metadata.create_all(bind=engine)
 
 api_v1 = APIRouter(prefix="/api/v1")
 
