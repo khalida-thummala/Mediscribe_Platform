@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from typing import Optional, List
+import os
+import json
 from app.models.consultation import Consultation
 from app.schemas.consultation import ConsultationCreate
 
@@ -10,13 +12,19 @@ from app.services.report_service import ReportService
 
 class ConsultationService:
     @staticmethod
+    def _stringify_soap_value(value):
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, indent=2)
+        return str(value) if value is not None else ""
+
+    @staticmethod
     def create_consultation(db: Session, data: ConsultationCreate, user_id: str, organization_id: str):
         try:
             new_consultation = Consultation(
-                **data.dict(),
+                **data.model_dump(),
                 user_id=user_id,
                 organization_id=organization_id,
-                status="pending"
+                status="scheduled"
             )
             db.add(new_consultation)
             db.commit()
@@ -28,7 +36,8 @@ class ConsultationService:
                     db, 
                     action="consultation_created", 
                     user_id=user_id, 
-                    organization_id=organization_id, 
+                    organization_id=organization_id,
+                    resource_type="consultation",
                     resource_id=new_consultation.consultation_id
                 )
             except Exception as audit_err:
@@ -36,7 +45,9 @@ class ConsultationService:
                 
             return new_consultation
         except Exception as e:
+            import traceback
             print(f"CRITICAL: Consultation creation failed! Error type: {type(e).__name__}, Message: {str(e)}")
+            print(traceback.format_exc())
             db.rollback()
             raise e
 
@@ -101,7 +112,7 @@ class ConsultationService:
 
         try:
 
-            # Save audio path
+            # Save audio path (will be updated to B2 key after upload)
             consultation.audio_file_id = audio_file_path
 
             # Generate checksum
@@ -117,14 +128,14 @@ class ConsultationService:
 
 
             # =========================
-            # WHISPER TRANSCRIPTION
+            # ASSEMBLYAI TRANSCRIPTION
+            # (direct file upload — no B2 URL needed)
             # =========================
 
-            from app.core.speech import transcribe_audio
+            from app.core.speech import transcribe_audio, upload_to_b2
 
-            result = transcribe_audio(
-                audio_file_path
-            )
+            # Transcribe directly from local file FIRST
+            result = transcribe_audio(audio_file_path)
 
             print("TRANSCRIPTION RESULT:", result)
 
@@ -140,6 +151,23 @@ class ConsultationService:
                 result["confidence"]
             )
 
+            # Upload to B2 for permanent storage AFTER transcription succeeds
+            if result["status"] == "completed":
+                try:
+                    b2_key = upload_to_b2(audio_file_path)
+                    consultation.audio_file_id = b2_key
+                    print(f"[B2] Successfully uploaded audio to B2: {b2_key}")
+                except Exception as b2_err:
+                    print(f"[B2] Upload failed, keeping local path: {b2_err}")
+                    # Keep the local path if B2 upload fails
+            else:
+                # If transcription failed, still try to upload to B2 for debugging
+                try:
+                    b2_key = upload_to_b2(audio_file_path)
+                    consultation.audio_file_id = b2_key
+                except Exception as b2_err:
+                    print(f"[B2] Upload failed: {b2_err}")
+
 
             # =========================
             # SOAP GENERATION
@@ -154,8 +182,6 @@ class ConsultationService:
 
                 from app.models.report import Report
 
-                import json
-
                 print("GENERATING SOAP...")
 
                 ai_output = generate_soap(
@@ -168,6 +194,9 @@ class ConsultationService:
 
                     soap = json.loads(ai_output)
 
+                    if soap.get("_error"):
+                        raise ValueError(soap["_error"])
+
                     print("SOAP PARSED SUCCESSFULLY")
 
                 except Exception as e:
@@ -177,7 +206,7 @@ class ConsultationService:
                     print("RAW AI OUTPUT:")
                     print(ai_output)
 
-                    consultation.status = "failed"
+                    consultation.status = "failed_soap"
 
                     db.commit()
 
@@ -197,68 +226,38 @@ class ConsultationService:
                 # CREATE REPORT
                 # =========================
 
-                report = Report(
+                existing_report = db.query(Report).filter(
+                    Report.consultation_id == consultation.consultation_id,
+                    Report.organization_id == organization_id
+                ).first()
 
-                    consultation_id=
-                        consultation.consultation_id,
-
-                    patient_id=
-                        consultation.patient_id,
-
-                    user_id=
-                        consultation.user_id,
-
-                    organization_id=
-                        organization_id,
-
-
-                    subjective=str(
-                        soap.get(
-                            "subjective",
-                            ""
-                        )
-                    ),
-
-                    objective=str(
-                        soap.get(
-                            "objective",
-                            ""
-                        )
-                    ),
-
-                    assessment=str(
-                        soap.get(
-                            "assessment",
-                            ""
-                        )
-                    ),
-
-                    plan=str(
-                        soap.get(
-                            "plan",
-                            ""
-                        )
-                    ),
-
-                    medications=meds,
-
-                    key_entities={
-                        "interactions": interactions
-                    },
-
-                    follow_up_needed=soap.get(
-                        "follow_up_needed",
-                        False
-                    ),
-
-                    follow_up_days=soap.get(
-                        "follow_up_days"
-                    ),
-
+                report = existing_report or Report(
+                    consultation_id=consultation.consultation_id,
+                    patient_id=consultation.patient_id,
+                    user_id=consultation.user_id,
+                    organization_id=organization_id,
                     status="draft"
                 )
 
-                db.add(report)
+                report.subjective = ConsultationService._stringify_soap_value(
+                    soap.get("subjective")
+                )
+                report.objective = ConsultationService._stringify_soap_value(
+                    soap.get("objective")
+                )
+                report.assessment = ConsultationService._stringify_soap_value(
+                    soap.get("assessment")
+                )
+                report.plan = ConsultationService._stringify_soap_value(
+                    soap.get("plan")
+                )
+                report.medications = meds
+                report.key_entities = {"interactions": interactions}
+                report.follow_up_needed = soap.get("follow_up_needed", False)
+                report.follow_up_days = soap.get("follow_up_days")
+
+                if not existing_report:
+                    db.add(report)
                 print("REPORT ADDED")
 
                 consultation.status = "completed"
@@ -282,6 +281,14 @@ class ConsultationService:
         db.commit()
         print("REPORT SAVED")
         db.refresh(consultation)
+
+        # Clean up local temp audio file after B2 upload
+        try:
+            if os.path.exists(audio_file_path):
+                os.remove(audio_file_path)
+                print(f"[Cleanup] Removed local file: {audio_file_path}")
+        except Exception as cleanup_err:
+            print(f"[Cleanup] Could not remove local file: {cleanup_err}")
 
         return consultation
     

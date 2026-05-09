@@ -6,12 +6,101 @@ import uuid
 import os
 from app.models.analysis import Analysis
 from app.schemas.analysis import AIAnalysisCreate
-from app.core.ai import generate_soap
+from app.core.ai import generate_soap, generate_soap_from_image
 
 # Use the correct ORM model class name
 AIAnalysisRecord = Analysis
 
 class AnalysisService:
+    @staticmethod
+    def _extract_text(file_path: str, file_type: str) -> str:
+        ext = os.path.splitext(file_path)[1].lower()
+
+        if file_type == "pdf" or ext == ".pdf":
+            try:
+                try:
+                    from pypdf import PdfReader
+                except ImportError:
+                    from PyPDF2 import PdfReader
+
+                reader = PdfReader(file_path)
+                return "\n\n".join((page.extract_text() or "") for page in reader.pages).strip()
+            except Exception as e:
+                print(f"PDF extraction failed: {e}")
+
+        if file_type == "docx" or ext in (".docx", ".doc"):
+            try:
+                from docx import Document
+
+                doc = Document(file_path)
+                return "\n".join(p.text for p in doc.paragraphs if p.text.strip()).strip()
+            except Exception as e:
+                print(f"DOCX extraction failed: {e}")
+
+        if ext in (".txt", ".md", ".csv"):
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    return f.read().strip()
+            except Exception as e:
+                print(f"Text extraction failed: {e}")
+
+        return ""
+
+    @staticmethod
+    def _stringify_soap_value(value):
+        if isinstance(value, (dict, list)):
+            import json
+            return json.dumps(value, indent=2)
+        return str(value) if value is not None else ""
+
+    @staticmethod
+    def _find_analysis_report(db: Session, analysis_id: str, organization_id: str):
+        from app.models.report import Report
+
+        reports = db.query(Report).filter(Report.organization_id == organization_id).all()
+        for report in reports:
+            if isinstance(report.key_entities, dict) and report.key_entities.get("analysis_id") == analysis_id:
+                return report
+        return None
+
+    @staticmethod
+    def _upsert_report_from_analysis(db: Session, record: Analysis, status: str = "draft"):
+        from app.models.report import Report
+
+        report = AnalysisService._find_analysis_report(
+            db, record.analysis_id, record.organization_id
+        ) or Report(
+            user_id=record.user_id,
+            organization_id=record.organization_id,
+            patient_id=record.patient_id,
+            status=status,
+        )
+
+        report.patient_id = record.patient_id
+        report.subjective = AnalysisService._stringify_soap_value(record.generated_subjective)
+        report.objective = AnalysisService._stringify_soap_value(record.generated_objective)
+        report.assessment = AnalysisService._stringify_soap_value(record.generated_assessment)
+        report.plan = AnalysisService._stringify_soap_value(record.generated_plan)
+        report.medications = record.generated_medications or []
+        report.key_entities = {
+            **(record.key_entities if isinstance(record.key_entities, dict) else {}),
+            "analysis_id": record.analysis_id,
+            "source_file_name": record.source_file_name,
+            "source_file_type": record.source_file_type,
+        }
+        report.status = status
+
+        if status == "approved":
+            report.approved_by = record.user_id
+            report.approved_at = datetime.utcnow()
+
+        if not report.report_id:
+            db.add(report)
+        elif report not in db:
+            db.add(report)
+
+        return report
+
     @staticmethod
     def create_analysis_record(db: Session, data: AIAnalysisCreate, user_id: str, organization_id: str):
         new_record = Analysis(
@@ -68,27 +157,12 @@ class AnalysisService:
                 content = await file.read()
                 f.write(content)
             
-            # Simulate text extraction (in production use OCR/NLP)
-            extracted_text = f"""
-            CLINICAL REPORT SUMMARY - {file.filename}
-            
-            SUBJECTIVE:
-            Patient presents with a persistent cough and fever (101.2F) for 3 days. 
-            Reports mild chest congestion but no shortness of breath.
-            
-            OBJECTIVE:
-            Vitals: BP 120/80, HR 85, Temp 101.2F, SpO2 98%.
-            Lungs: Occasional rhonchi in right lower lobe. Throat: Mild erythema.
-            
-            ASSESSMENT:
-            1. Acute Bronchitis.
-            2. Fever, unspecified.
-            
-            PLAN:
-            - Prescribed Amoxicillin 500mg (if symptoms persist).
-            - Recommend plenty of fluids and rest.
-            - Follow up in 7 days.
-            """
+            extracted_text = AnalysisService._extract_text(file_path, file_type)
+            if not extracted_text and file_type != "image":
+                extracted_text = (
+                    f"Medical document uploaded: {file.filename}. "
+                    "No readable text could be extracted automatically."
+                )
             
             new_record = Analysis(
                 upload_id=upload_id,
@@ -97,6 +171,7 @@ class AnalysisService:
                 source_file_name=file.filename,
                 source_file_type=file_type,
                 extracted_text=extracted_text,
+                key_entities={"file_path": file_path},
                 analysis_status="pending"
             )
             db.add(new_record)
@@ -126,9 +201,17 @@ class AnalysisService:
         from app.core.ai import generate_soap, compare_medical_reports
         from app.models.report import Report
 
-        soap_json = generate_soap(record.extracted_text)
+        file_path = record.key_entities.get("file_path") if isinstance(record.key_entities, dict) else None
+        if record.source_file_type == "image" and file_path and os.path.exists(file_path):
+            soap_json = generate_soap_from_image(file_path, record.extracted_text or "")
+        else:
+            soap_json = generate_soap(record.extracted_text or "")
+
         try:
             soap_data = json.loads(soap_json)
+            if soap_data.get("_error"):
+                raise ValueError(soap_data["_error"])
+
             record.generated_subjective = soap_data.get("subjective")
             record.generated_objective = soap_data.get("objective")
             record.generated_assessment = soap_data.get("assessment")
@@ -155,6 +238,7 @@ class AnalysisService:
                     record.comparison_data = compare_medical_reports(existing_data, soap_data)
             
             record.analysis_status = "completed"
+            AnalysisService._upsert_report_from_analysis(db, record, status="draft")
         except Exception as e:
             print(f"Analysis Error: {str(e)}")
             record.analysis_status = "failed"
@@ -178,23 +262,7 @@ class AnalysisService:
         record.notes = notes
         record.analysis_status = "completed"
         
-        # 2. Create a permanent Report record
-        from app.models.report import Report
-        
-        new_report = Report(
-            user_id=record.user_id,
-            organization_id=record.organization_id,
-            subjective=record.generated_subjective,
-            objective=record.generated_objective,
-            assessment=record.generated_assessment,
-            plan=record.generated_plan,
-            medications=record.generated_medications,
-            status="approved",
-            approved_by=record.user_id,
-            approved_at=datetime.utcnow()
-        )
-        
-        db.add(new_report)
+        AnalysisService._upsert_report_from_analysis(db, record, status="approved")
         db.commit()
         db.refresh(record)
         return record
