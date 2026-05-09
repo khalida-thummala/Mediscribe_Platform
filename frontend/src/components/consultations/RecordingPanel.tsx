@@ -42,7 +42,8 @@ export default function RecordingPanel({
 
   const {
     recSeconds,
-    transcript
+    transcript,
+    appendTranscript
   } = useConsultationStore()
 
   const [phase, setPhase] =
@@ -57,47 +58,45 @@ export default function RecordingPanel({
   // END CONSULTATION
   const endMut = useMutation({
 
-    mutationFn: (audioData: string) =>
+    mutationFn: (audioBlob: Blob) =>
       consultationsApi.end(
         consultationId,
-        audioData
+        audioBlob
       ),
 
-    onSuccess: async () => {
-      try {
+    onSuccess: async (data) => {
+      if (data?.transcription_text) {
+        appendTranscript(data.transcription_text)
+      }
 
-        await consultationsApi.generateSoap(
-          consultationId
-        )
-
-        toast.success(
-          'SOAP report generated successfully'
-        )
-
-      } catch (err) {
-
-        console.error(err)
-
-        toast.error(
-          'SOAP generation failed'
-        )
+      // The /end endpoint already runs transcription + SOAP generation internally.
+      // Only call generateSoap as a fallback if transcription completed but no report yet.
+      if (data?.transcription_status === 'completed') {
+        try {
+          await consultationsApi.generateSoap(consultationId)
+          toast.success('SOAP report generated successfully')
+        } catch (err) {
+          // Report may already exist from the end endpoint — that's fine
+          console.warn('[SOAP] generateSoap fallback skipped (report may already exist):', err)
+          toast.success('Consultation completed')
+        }
+      } else if (data?.transcription_status === 'failed' || data?.transcription_status === 'failed_transcription') {
+        toast.error('Transcription failed — please try again')
+      } else {
+        toast.success('Consultation completed')
       }
 
       setPhase('done')
-
-      setTimeout(
-        onComplete,
-        3000
-      )
+      setTimeout(onComplete, 3000)
     },
-    onError: (err: any) => {
 
-      const msg =
-        err.response?.data?.detail ??
-        'Failed to end consultation'
+    onError: (err: any) => {
+      const detail = err.response?.data?.detail
+      const msg = Array.isArray(detail)
+        ? detail.map((d: any) => d.msg ?? JSON.stringify(d)).join(', ')
+        : (typeof detail === 'string' ? detail : 'Failed to end consultation')
 
       toast.error(msg)
-
       setPhase('idle')
     },
   })
@@ -117,9 +116,15 @@ export default function RecordingPanel({
 
     setPhase('stopping')
 
-    const audioBase64 = await stop()
+    const audioBlob = await stop()
 
-    endMut.mutate(audioBase64)
+    if (audioBlob.size < 1000) {
+      toast.error('Recording is empty. Please check microphone access and try again.')
+      setPhase('idle')
+      return
+    }
+
+    endMut.mutate(audioBlob)
   }
 
 

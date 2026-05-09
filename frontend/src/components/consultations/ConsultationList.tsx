@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { consultationsApi } from '@/api/consultations'
 import { patientsApi } from '@/api/patients'
-import { Plus, Mic, StopCircle, Stethoscope, Calendar, Clock, Edit2, Trash2 } from 'lucide-react'
+import { Plus, Mic, StopCircle, Stethoscope, Calendar, Clock, Edit2, Trash2, RefreshCw, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import Modal from '@/components/shared/Modal'
 import ConsultationForm from './ConsultationForm'
@@ -26,6 +26,7 @@ export default function ConsultationList() {
   const [editItem, setEditItem] = useState<any>(null)
   const [editSoapId, setEditSoapId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [reconsultData, setReconsultData] = useState<any>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['consultations'],
@@ -45,6 +46,17 @@ export default function ConsultationList() {
       toast.success('Consultation deleted')
     },
     onError: () => toast.error('Failed to delete consultation'),
+  })
+
+  const generateSoapMut = useMutation({
+    mutationFn: (id: string) => consultationsApi.generateSoap(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['consultations'] })
+      toast.success('SOAP note generated from transcript')
+    },
+    onError: (e: any) => {
+      toast.error(e.response?.data?.detail || 'SOAP generation failed')
+    },
   })
 
 
@@ -199,7 +211,7 @@ export default function ConsultationList() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                         {/* Start/Resume Button for anything not completed */}
-                        {(c.status === 'scheduled' || c.status === 'pending' || c.status.startsWith('failed')) && (
+                        {(c.status === 'scheduled' || c.status === 'pending' || c.status === 'failed_transcription') && (
                           <button
                             onClick={() => startMut.mutate(c.consultation_id)}
                             style={{
@@ -213,6 +225,24 @@ export default function ConsultationList() {
                             }}
                           >
                             <Mic size={12} /> {c.status.startsWith('failed') ? 'Retry' : 'Start Session'}
+                          </button>
+                        )}
+
+                        {c.status === 'failed_soap' && (
+                          <button
+                            onClick={() => generateSoapMut.mutate(c.consultation_id)}
+                            disabled={generateSoapMut.isPending}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5,
+                              padding: '6px 14px', borderRadius: 8, cursor: generateSoapMut.isPending ? 'not-allowed' : 'pointer',
+                              background: '#7c3aed', color: '#fff',
+                              border: 'none', fontSize: 12, fontWeight: 600,
+                              transition: 'all 0.15s',
+                              boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)',
+                              opacity: generateSoapMut.isPending ? 0.7 : 1,
+                            }}
+                          >
+                            <Sparkles size={12} /> {generateSoapMut.isPending ? 'Generating' : 'Generate SOAP'}
                           </button>
                         )}
                         
@@ -261,6 +291,26 @@ export default function ConsultationList() {
                               <Edit2 size={12} />
                             </button>
                           </div>
+                        )}
+
+                        {c.status !== 'in_progress' && (
+                          <button
+                            onClick={() => setReconsultData({
+                              patient_id: c.patient_id,
+                              consultation_type: c.consultation_type,
+                              chief_complaint: '',
+                            })}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5,
+                              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                              background: '#fff', color: '#0d9488',
+                              border: '1px solid #99f6e4', fontSize: 12, fontWeight: 600,
+                              transition: 'all 0.15s',
+                            }}
+                            title="Start a new consultation for the same patient"
+                          >
+                            <RefreshCw size={12} /> Reconsult
+                          </button>
                         )}
                         
                         {/* Edit/Delete Buttons */}
@@ -327,6 +377,26 @@ export default function ConsultationList() {
           />
         </Modal>
       )}
+
+      {/* Reconsult Modal — pre-fills same patient & type, new chief complaint */}
+      <Modal
+        open={!!reconsultData}
+        onClose={() => setReconsultData(null)}
+        title="New Follow-up Consultation"
+        width={520}
+      >
+        {reconsultData && (
+          <ConsultationForm
+            patients={patients}
+            initialData={reconsultData}
+            isReconsult
+            onSuccess={() => {
+              setReconsultData(null)
+              qc.invalidateQueries({ queryKey: ['consultations'] })
+            }}
+          />
+        )}
+      </Modal>
     </div>
   )
 }
