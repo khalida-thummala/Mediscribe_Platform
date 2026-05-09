@@ -10,7 +10,12 @@ from app.services.report_service import ReportService
 from app.core.roles import require_role
 from app.models.report import Report
 import logging
-
+from fastapi import Body
+from fastapi.responses import StreamingResponse
+from app.services.export_service import ExportService
+from app.models.patient import Patient
+from app.models.user import User
+import io
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -177,58 +182,101 @@ def archive_report(
 
     return {"message": "Report archived"}
 
+
+
+
+
 @router.post("/{report_id}/export")
 def export_report(
     report_id: str,
-    data: dict = {},
+    data: dict = Body(default={}),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Generate and stream a real PDF or DOCX file."""
-    from fastapi.responses import StreamingResponse
-    from app.services.export_service import ExportService
-    from app.models.patient import Patient
-    from app.models.user import User
-    import io
 
     report = db.query(Report).filter(
         Report.report_id == report_id,
         Report.organization_id == current_user.organization_id
     ).first()
+
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Report not found"
+        )
 
-    # Get doctor and patient (fall back gracefully if missing)
-    doctor = db.query(User).filter(User.user_id == report.user_id).first() or current_user
-    patient = db.query(Patient).filter(Patient.patient_id == report.patient_id).first() if report.patient_id else None
+    doctor = db.query(User).filter(
+        User.user_id == report.user_id
+    ).first() or current_user
 
-    # Create a minimal stub patient if not linked
+    patient = (
+        db.query(Patient).filter(
+            Patient.patient_id == report.patient_id
+        ).first()
+        if report.patient_id else None
+    )
+
     if patient is None:
+
         class _StubPatient:
+
             full_name = "Unlinked Patient"
+
             first_name = "Unlinked"
+
             last_name = "Patient"
-            patient_id = report.patient_id or "N/A"
+
+            patient_id = (
+                report.patient_id or "N/A"
+            )
+
         patient = _StubPatient()
 
-    fmt = (data.get("format") or "pdf").lower()
+    fmt = (
+        data.get("format") or "pdf"
+    ).lower()
+
     safe_id = report_id[:8]
 
-    try:
-        if fmt == "docx":
-            file_bytes = ExportService.generate_docx_bytes(report, doctor, patient)
-            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            filename = f"SOAP_Report_{safe_id}.docx"
-        else:
-            file_bytes = ExportService.generate_pdf_bytes(report, doctor, patient)
-            media_type = "application/pdf"
-            filename = f"SOAP_Report_{safe_id}.pdf"
+    if fmt == "docx":
 
-        return StreamingResponse(
-            io.BytesIO(file_bytes),
-            media_type=media_type,
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        file_bytes = (
+            ExportService.generate_docx_bytes(
+                report,
+                doctor,
+                patient
+            )
         )
-    except Exception as e:
-        logger.error(f"Export failed for report {report_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+        media_type = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+        filename = (
+            f"SOAP_Report_{safe_id}.docx"
+        )
+
+    else:
+
+        file_bytes = (
+            ExportService.generate_pdf_bytes(
+                report,
+                doctor,
+                patient
+            )
+        )
+
+        media_type = "application/pdf"
+
+        filename = (
+            f"SOAP_Report_{safe_id}.pdf"
+        )
+
+    return StreamingResponse(
+        io.BytesIO(file_bytes),
+        media_type=media_type,
+        headers={
+            "Content-Disposition":
+            f'attachment; filename="{filename}"'
+        },
+    )

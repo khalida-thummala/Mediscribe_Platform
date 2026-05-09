@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./mediscribe.db")
     
+     # Supabase
+    SUPABASE_URL: Optional[str] = os.getenv("SUPABASE_URL")
+    SUPABASE_SECRET_KEY: Optional[str] = os.getenv("SUPABASE_SECRET_KEY")
+
     # External APIs
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     ENDPOINT: Optional[str] = os.getenv("ENDPOINT")

@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from fastapi.responses import Response
 from typing import List, Optional
 from fastapi import UploadFile, File
 import os
-
+from app.models.patient import Patient
+from app.models.user import User
 from app.db.deps import get_db
 from app.models.consultation import Consultation
 from app.models.report import Report
@@ -313,8 +315,7 @@ def approve_consultation_report(
     db.refresh(report)
     return report
 
-from app.models.patient import Patient
-from app.models.user import User
+
 
 @router.get("/{consultation_id}/export")
 def export_consultation_report(
@@ -322,17 +323,44 @@ def export_consultation_report(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    report = db.query(Report).filter(Report.consultation_id == consultation_id).first()
+    report = db.query(Report).filter(
+        Report.consultation_id == consultation_id
+    ).first()
+
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-        
-    patient = db.query(Patient).filter(Patient.patient_id == report.patient_id).first()
-    doctor = db.query(User).filter(User.user_id == report.user_id).first()
-    
+        raise HTTPException(
+            status_code=404,
+            detail="Report not found"
+        )
+
+    patient = db.query(Patient).filter(
+        Patient.patient_id == report.patient_id
+    ).first()
+
+    doctor = db.query(User).filter(
+        User.user_id == report.user_id
+    ).first()
+
     if not patient or not doctor:
-        raise HTTPException(status_code=404, detail="Incomplete report metadata")
-        
-    return ExportService.generate_pdf_report(report, doctor, patient)
+        raise HTTPException(
+            status_code=404,
+            detail="Incomplete report metadata"
+        )
+
+    pdf_bytes = ExportService.generate_pdf_bytes(
+        report,
+        doctor,
+        patient
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":
+            f"attachment; filename=report-{consultation_id}.pdf"
+        }
+    )
     
 @router.put("/{consultation_id}")
 def update_consultation(
