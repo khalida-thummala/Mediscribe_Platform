@@ -24,6 +24,7 @@ class SoapReportUpdate(BaseModel):
 class SoapReport(BaseModel):
     report_id: str
     consultation_id: Optional[str] = None
+    patient_id: Optional[str] = None
     user_id: str
     organization_id: str
     subjective: Optional[str] = None

@@ -75,6 +75,12 @@ class Report(Base):
         nullable=True
     )
 
+    # Key clinical entities (e.g. drug interactions)
+    key_entities = Column(
+        JSON,
+        nullable=True
+    )
+
     # Follow-up tracking
     follow_up_needed = Column(
         Boolean,
