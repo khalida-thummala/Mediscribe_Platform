@@ -1,125 +1,274 @@
-import requests
 import json
+import re
+import base64
+import mimetypes
+from typing import Any
+
+import requests
+
 from app.core.config import settings
+
 
 OPENAI_API_KEY = settings.OPENAI_API_KEY
 ENDPOINT = settings.ENDPOINT
-print("OPENAI_API_KEY:", OPENAI_API_KEY)
-print("ENDPOINT:", ENDPOINT)
+
+
+SOAP_FALLBACK = {
+    "subjective": "",
+    "objective": "",
+    "assessment": "",
+    "plan": "",
+    "medications": [],
+    "follow_up_needed": False,
+    "follow_up_days": None,
+}
+
+
+def _json_error(message: str, transcript: str = "") -> str:
+    payload = {
+        **SOAP_FALLBACK,
+        "_error": message,
+    }
+    if transcript:
+        payload["subjective"] = transcript
+    return json.dumps(payload)
+
+
+def _headers() -> dict[str, str]:
+    if ENDPOINT and "openai.azure.com" in ENDPOINT:
+        return {
+            "api-key": OPENAI_API_KEY or "",
+            "Content-Type": "application/json",
+        }
+
+    return {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
+def _extract_json(content: str) -> dict[str, Any]:
+    cleaned = content.strip()
+
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:].strip()
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:].strip()
+
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3].strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+        if not match:
+            raise
+        return json.loads(match.group(0))
+
+
+def _normalize_soap(data: dict[str, Any]) -> dict[str, Any]:
+    normalized = {**SOAP_FALLBACK, **data}
+
+    for key in ("subjective", "objective", "assessment", "plan"):
+        value = normalized.get(key)
+        if isinstance(value, (dict, list)):
+            normalized[key] = json.dumps(value, indent=2)
+        elif value is None:
+            normalized[key] = ""
+        else:
+            normalized[key] = str(value)
+
+    meds = normalized.get("medications")
+    normalized["medications"] = meds if isinstance(meds, list) else []
+    normalized["follow_up_needed"] = bool(normalized.get("follow_up_needed"))
+
+    follow_up_days = normalized.get("follow_up_days")
+    try:
+        normalized["follow_up_days"] = int(follow_up_days) if follow_up_days is not None else None
+    except (TypeError, ValueError):
+        normalized["follow_up_days"] = None
+
+    return normalized
+
+
+def _post_chat(body: dict[str, Any], timeout: int = 90):
+    attempts = [body]
+
+    completion_token_body = dict(body)
+    if "max_tokens" in completion_token_body:
+        completion_token_body["max_completion_tokens"] = completion_token_body.pop("max_tokens")
+        attempts.append(completion_token_body)
+
+    no_json_body = dict(body)
+    no_json_body.pop("response_format", None)
+    attempts.append(no_json_body)
+
+    no_temp_body = dict(body)
+    no_temp_body.pop("temperature", None)
+    attempts.append(no_temp_body)
+
+    no_temp_json_body = dict(completion_token_body)
+    no_temp_json_body.pop("temperature", None)
+    no_temp_json_body.pop("response_format", None)
+    attempts.append(no_temp_json_body)
+
+    seen = set()
+    last_response = None
+
+    for attempt in attempts:
+        marker = json.dumps(attempt, sort_keys=True)
+        if marker in seen:
+            continue
+        seen.add(marker)
+
+        response = requests.post(
+            ENDPOINT,
+            headers=_headers(),
+            json=attempt,
+            timeout=timeout,
+        )
+        last_response = response
+
+        if response.status_code != 400:
+            return response
+
+        error_text = response.text.lower()
+        retryable = any(
+            token in error_text
+            for token in (
+                "max_tokens",
+                "max_completion_tokens",
+                "response_format",
+                "temperature",
+                "unsupported parameter",
+                "unrecognized request argument",
+            )
+        )
+
+        if not retryable:
+            return response
+
+    return last_response
+
 
 def generate_soap(text: str):
+    transcript = (text or "").strip()
 
-    # Fallback if no AI key
+    if not transcript:
+        return _json_error("Transcript is empty")
+
     if not OPENAI_API_KEY or not ENDPOINT:
-
-        return json.dumps({
-            "subjective": text,
-            "objective": "",
-            "assessment": "",
-            "plan": "",
-            "medications": [],
-            "follow_up_needed": False,
-            "follow_up_days": None
-        })
-
-    headers = {
-        "api-key": OPENAI_API_KEY,
-        "Content-Type": "application/json"
-    }
+        fallback = {**SOAP_FALLBACK, "subjective": transcript}
+        return json.dumps(fallback)
 
     body = {
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "You are a medical AI assistant. "
-                    "Convert the consultation transcript into SOAP format. "
-                    "Return ONLY valid JSON with keys: "
+                    "You are a medical AI assistant. Convert the consultation transcript "
+                    "into a SOAP note. Return only valid JSON with these exact keys: "
                     "subjective, objective, assessment, plan, medications, "
-                    "follow_up_needed, follow_up_days"
-                )
+                    "follow_up_needed, follow_up_days. Medications must be an array."
+                ),
             },
             {
                 "role": "user",
-                "content": text
-            }
+                "content": transcript,
+            },
         ],
         "temperature": 0.2,
-        "max_tokens": 800
+        "max_tokens": 900,
+        "response_format": {"type": "json_object"},
     }
 
     try:
-
-        response = requests.post(
-            ENDPOINT,
-            headers=headers,
-            json=body,
-            timeout=60
-        )
+        response = _post_chat(body)
 
         print("SOAP STATUS:", response.status_code)
-        print("SOAP RESPONSE:", response.text)
 
         if response.status_code != 200:
-
-            return json.dumps({
-                "subjective": f"AI Error {response.status_code}",
-                "objective": response.text,
-                "assessment": "",
-                "plan": "",
-                "medications": [],
-                "follow_up_needed": False,
-                "follow_up_days": None
-            })
+            print("SOAP RESPONSE:", response.text)
+            return _json_error(f"AI request failed with status {response.status_code}", transcript)
 
         data = response.json()
-
-        content = data["choices"][0]["message"]["content"].strip()
-
-        # Remove markdown wrappers
-        if content.startswith("```json"):
-            content = content[7:]
-
-        elif content.startswith("```"):
-            content = content[3:]
-
-        if content.endswith("```"):
-            content = content[:-3]
-
-        return content.strip()
+        content = data["choices"][0]["message"]["content"]
+        soap = _normalize_soap(_extract_json(content))
+        return json.dumps(soap)
 
     except Exception as e:
-
         print("SOAP AI ERROR:", str(e))
-
-        return json.dumps({
-            "subjective": f"Exception: {str(e)}",
-            "objective": "",
-            "assessment": "",
-            "plan": "",
-            "medications": [],
-            "follow_up_needed": False,
-            "follow_up_days": None
-        })
+        return _json_error(f"SOAP generation exception: {str(e)}", transcript)
 
 
-def compare_medical_reports(
-    existing_soap: dict,
-    new_analysis: dict
-):
+def generate_soap_from_image(image_path: str, context: str = ""):
+    if not OPENAI_API_KEY or not ENDPOINT:
+        return _json_error("AI image analysis unavailable")
 
+    try:
+        mime_type = mimetypes.guess_type(image_path)[0] or "image/png"
+        with open(image_path, "rb") as image_file:
+            encoded = base64.b64encode(image_file.read()).decode("utf-8")
+
+        prompt = (
+            "Read this medical image or scanned report and generate a SOAP note. "
+            "If the image is an X-ray or radiology image, summarize visible/reportable findings carefully "
+            "and avoid inventing patient history. Return only JSON with keys: subjective, objective, "
+            "assessment, plan, medications, follow_up_needed, follow_up_days."
+        )
+        if context:
+            prompt = f"{prompt}\n\nAdditional context: {context}"
+
+        body = {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a careful medical AI assistant that extracts clinical information into SOAP JSON.",
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{encoded}"
+                            },
+                        },
+                    ],
+                },
+            ],
+            "temperature": 0.2,
+            "max_tokens": 900,
+            "response_format": {"type": "json_object"},
+        }
+
+        response = _post_chat(body)
+        print("IMAGE SOAP STATUS:", response.status_code)
+
+        if response.status_code != 200:
+            print("IMAGE SOAP RESPONSE:", response.text)
+            return _json_error(f"Image AI request failed with status {response.status_code}")
+
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+        soap = _normalize_soap(_extract_json(content))
+        return json.dumps(soap)
+
+    except Exception as e:
+        print("IMAGE SOAP ERROR:", str(e))
+        return _json_error(f"Image SOAP generation exception: {str(e)}")
+
+
+def compare_medical_reports(existing_soap: dict, new_analysis: dict):
     if not OPENAI_API_KEY or not ENDPOINT:
         return {
             "summary": "AI comparison unavailable",
             "discrepancies": [],
             "new_info": [],
-            "conflicts": []
+            "conflicts": [],
         }
-
-    headers = {
-        "api-key": OPENAI_API_KEY,
-        "Content-Type": "application/json"
-    }
 
     prompt = f"""
     Compare these two medical reports.
@@ -141,138 +290,86 @@ def compare_medical_reports(
 
     body = {
         "messages": [
-            {
-                "role": "system",
-                "content": "You are a clinical medical auditor."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "system", "content": "You are a clinical medical auditor."},
+            {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 600
+        "max_tokens": 600,
+        "response_format": {"type": "json_object"},
     }
 
     try:
-
-        response = requests.post(
-            ENDPOINT,
-            headers=headers,
-            json=body,
-            timeout=60
-        )
-
+        response = _post_chat(body)
         print("COMPARE STATUS:", response.status_code)
-        print("COMPARE RESPONSE:", response.text)
 
         if response.status_code != 200:
+            print("COMPARE RESPONSE:", response.text)
             return {
                 "summary": "Comparison failed",
                 "discrepancies": [],
                 "new_info": [],
-                "conflicts": []
+                "conflicts": [],
             }
 
         data = response.json()
-
-        content = data["choices"][0]["message"]["content"].strip()
-
-        if content.startswith("```json"):
-            content = content[7:]
-
-        elif content.startswith("```"):
-            content = content[3:]
-
-        if content.endswith("```"):
-            content = content[:-3]
-
-        return json.loads(content)
+        content = data["choices"][0]["message"]["content"]
+        return _extract_json(content)
 
     except Exception as e:
-
         print("COMPARE ERROR:", str(e))
-
         return {
             "summary": f"Exception: {str(e)}",
             "discrepancies": [],
             "new_info": [],
-            "conflicts": []
+            "conflicts": [],
         }
 
 
 def check_drug_interactions(medications: list):
-
-    if not OPENAI_API_KEY or not ENDPOINT:
+    if not medications or not OPENAI_API_KEY or not ENDPOINT:
         return []
-
-    headers = {
-        "api-key": OPENAI_API_KEY,
-        "Content-Type": "application/json"
-    }
 
     prompt = f"""
     Check for drug interactions in this medication list:
 
     {json.dumps(medications)}
 
-    Return ONLY JSON array:
-    [
-        {{
-            "severity": "",
-            "interaction": "",
-            "reason": ""
-        }}
-    ]
+    Return ONLY JSON:
+    {{
+        "interactions": [
+            {{
+                "severity": "",
+                "interaction": "",
+                "reason": ""
+            }}
+        ]
+    }}
     """
 
     body = {
         "messages": [
-            {
-                "role": "system",
-                "content": "You are a clinical pharmacologist."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "system", "content": "You are a clinical pharmacologist."},
+            {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 500
+        "max_tokens": 500,
+        "response_format": {"type": "json_object"},
     }
 
     try:
-
-        response = requests.post(
-            ENDPOINT,
-            headers=headers,
-            json=body,
-            timeout=60
-        )
-
+        response = _post_chat(body)
         print("DRUG STATUS:", response.status_code)
-        print("DRUG RESPONSE:", response.text)
 
         if response.status_code != 200:
+            print("DRUG RESPONSE:", response.text)
             return []
 
         data = response.json()
-
-        content = data["choices"][0]["message"]["content"].strip()
-
-        if content.startswith("```json"):
-            content = content[7:]
-
-        elif content.startswith("```"):
-            content = content[3:]
-
-        if content.endswith("```"):
-            content = content[:-3]
-
-        return json.loads(content)
+        content = data["choices"][0]["message"]["content"]
+        parsed = _extract_json(content)
+        interactions = parsed.get("interactions", [])
+        return interactions if isinstance(interactions, list) else []
 
     except Exception as e:
-
         print("DRUG ERROR:", str(e))
-
         return []

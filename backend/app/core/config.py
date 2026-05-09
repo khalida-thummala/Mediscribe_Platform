@@ -1,6 +1,12 @@
 from pydantic_settings import BaseSettings
 from typing import Optional, List
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file explicitly from the backend directory
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "MediScribe"
@@ -14,7 +20,6 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS
-    # In production, set this to specific domains in .env, e.g., ALLOWED_ORIGINS=https://mediscribe.health,https://app.mediscribe.health
     ALLOWED_ORIGINS: List[str] = os.getenv("ALLOWED_ORIGINS", "*").split(",")
     
     # Database
@@ -22,10 +27,16 @@ class Settings(BaseSettings):
     
     # External APIs
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
-    AZURE_SPEECH_KEY: Optional[str] = os.getenv("AZURE_SPEECH_KEY")
-    AZURE_SPEECH_REGION: Optional[str] = os.getenv("AZURE_SPEECH_REGION", "eastus")
     ENDPOINT: Optional[str] = os.getenv("ENDPOINT")
+
+    # AssemblyAI - Speech Transcription
     ASSEMBLYAI_API_KEY: Optional[str] = os.getenv("ASSEMBLYAI_API_KEY")
+
+    # Backblaze B2 - Object Storage (S3-compatible)
+    B2_KEY_ID: Optional[str] = os.getenv("B2_KEY_ID")
+    B2_APPLICATION_KEY: Optional[str] = os.getenv("B2_APPLICATION_KEY")
+    B2_ENDPOINT: Optional[str] = os.getenv("B2_ENDPOINT")
+    B2_BUCKET_NAME: str = os.getenv("B2_BUCKET_NAME", "mediscribe-audio")
     
     # File Uploads
     UPLOAD_DIR: str = "uploads"
@@ -36,3 +47,9 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
+
+# Debug: Print loaded settings on startup
+print("[CONFIG] ASSEMBLYAI_API_KEY:", "SET" if settings.ASSEMBLYAI_API_KEY else "NOT SET")
+print("[CONFIG] B2_KEY_ID:", settings.B2_KEY_ID)
+print("[CONFIG] B2_ENDPOINT:", settings.B2_ENDPOINT)
+print("[CONFIG] B2_BUCKET_NAME:", settings.B2_BUCKET_NAME)
