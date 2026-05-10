@@ -63,24 +63,25 @@ export default function DashboardPage() {
   return (
     <div className="fade-in">
       {/* ── Welcome Banner ──────────────────────── */}
-      <div style={{
+      <div className="stack-on-mobile" style={{
         background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #0d9488 100%)',
         borderRadius: 16, padding: '24px 28px', marginBottom: 24,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         boxShadow: '0 8px 32px rgba(13,148,136,0.25)',
         position: 'relative', overflow: 'hidden',
+        gap: 20
       }}>
         {/* Background decoration */}
         <div style={{
           position: 'absolute', right: -40, top: -40,
           width: 200, height: 200, borderRadius: '50%',
           background: 'rgba(255,255,255,0.06)',
-        }} />
+        }} className="desktop-only" />
         <div style={{
           position: 'absolute', right: 80, bottom: -60,
           width: 160, height: 160, borderRadius: '50%',
           background: 'rgba(255,255,255,0.04)',
-        }} />
+        }} className="desktop-only" />
 
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>
@@ -105,6 +106,7 @@ export default function DashboardPage() {
             background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
             color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             backdropFilter: 'blur(8px)', transition: 'all 0.2s', whiteSpace: 'nowrap',
+            width: 'fit-content'
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
           onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
@@ -115,7 +117,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat Cards ──────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {STAT_CARDS.map((s) => {
           const Icon = s.icon
           return (
@@ -155,22 +157,22 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Row 2: Recent Consultations + Quick Actions ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginBottom: 24 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginBottom: 24 }}>
         {/* Recent Consultations */}
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{
-            padding: '18px 22px 14px', borderBottom: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div>
-              <h3 style={{ fontSize: 15, margin: 0 }}>Recent Consultations</h3>
-              <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Latest patient sessions</p>
+            <div className="stack-on-mobile" style={{
+              padding: '18px 22px 14px', borderBottom: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div>
+                <h3 style={{ fontSize: 15, margin: 0 }}>Recent Consultations</h3>
+                <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Latest patient sessions</p>
+              </div>
+              <button className="btn btn-sm" onClick={() => navigate('/consultations')}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, width: 'fit-content' }}>
+                View All <ArrowRight size={12} />
+              </button>
             </div>
-            <button className="btn btn-sm" onClick={() => navigate('/consultations')}
-              style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              View All <ArrowRight size={12} />
-            </button>
-          </div>
 
           <div style={{ overflowX: 'auto' }}>
             {conLoading ? (
@@ -278,7 +280,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Row 3: Monthly Trend + KPIs ─────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Monthly Trend */}
         <div className="card">
           <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
