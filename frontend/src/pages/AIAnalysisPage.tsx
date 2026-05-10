@@ -40,7 +40,7 @@ export default function AIAnalysisPage() {
       </div>
 
       {/* ── Main Content ───────────────────── */}
-      <div style={{
+      <div className="grid-responsive" style={{
         display: 'grid',
         gridTemplateColumns: analysisId ? '1fr 1fr' : '1fr',
         gap: 24,
