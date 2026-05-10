@@ -99,7 +99,7 @@ export default function ReportList({ search = '' }: Props) {
   return (
     <div>
       {/* Mini Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
         {[
           { label: 'Total Reports',    value: allReports.length, color: '#7c3aed', bg: '#f5f3ff', icon: FileText },
           { label: 'Approved / Signed',value: approvedCount,     color: '#059669', bg: '#ecfdf5', icon: CheckCircle2 },
@@ -133,7 +133,7 @@ export default function ReportList({ search = '' }: Props) {
 
       {/* Table Card */}
       <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="stack-on-mobile" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: 14, margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, color: 'var(--text-2)' }}>
             All SOAP Reports
           </h3>
@@ -162,106 +162,108 @@ export default function ReportList({ search = '' }: Props) {
             <p>{search ? 'Try a different search term.' : 'Complete a consultation session to automatically generate SOAP notes.'}</p>
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                {['Report', 'Patient', 'Status', 'Created', 'Actions'].map((h) => (
-                  h === 'Actions'
-                    ? <th key={h} style={{ textAlign: 'right' }}>{h}</th>
-                    : <th key={h}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((r: any) => {
-                const st = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.draft
-                const StatusIcon = st.icon
-                const patient = getPatient(r)
-                return (
-                  <tr key={r.report_id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 34, height: 34, borderRadius: 8, background: '#f5f3ff',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: '1px solid #ddd6fe', flexShrink: 0,
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {['Report', 'Patient', 'Status', 'Created', 'Actions'].map((h) => (
+                    h === 'Actions'
+                      ? <th key={h} style={{ textAlign: 'right' }}>{h}</th>
+                      : <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {reports.map((r: any) => {
+                  const st = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.draft
+                  const StatusIcon = st.icon
+                  const patient = getPatient(r)
+                  return (
+                    <tr key={r.report_id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 34, height: 34, borderRadius: 8, background: '#f5f3ff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '1px solid #ddd6fe', flexShrink: 0,
+                          }}>
+                            <FileText size={15} color="#7c3aed" />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
+                              SOAP Report
+                            </div>
+                            <code style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                              #{r.report_id?.slice(0, 8)}…
+                            </code>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {patient ? (
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
+                              {patient.first_name} {patient.last_name}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                              #{patient.patient_id?.slice(0, 8)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-4)', fontSize: 12 }}>Unlinked Patient</span>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
+                          background: st.bg, color: st.color, border: `1px solid ${st.border}`,
                         }}>
-                          <FileText size={15} color="#7c3aed" />
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
-                            SOAP Report
-                          </div>
-                          <code style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                            #{r.report_id?.slice(0, 8)}…
-                          </code>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      {patient ? (
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
-                            {patient.first_name} {patient.last_name}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                            #{patient.patient_id?.slice(0, 8)}
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-4)', fontSize: 12 }}>Unlinked Patient</span>
-                      )}
-                    </td>
-                    <td>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '3px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                        background: st.bg, color: st.color, border: `1px solid ${st.border}`,
-                      }}>
-                        <StatusIcon size={11} /> {st.label}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 12.5, color: 'var(--text-3)' }}>
-                      {r.created_at ? format(new Date(r.created_at), 'MMM d, yyyy') : '—'}
-                      <br />
-                      <span style={{ fontSize: 11 }}>{r.created_at ? format(new Date(r.created_at), 'h:mm a') : ''}</span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 7, justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => setEditSoapId(r.consultation_id || r.report_id)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 5,
-                            padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
-                            background: r.status === 'approved' ? '#0d9488' : '#7c3aed', color: '#fff',
-                            border: 'none', fontSize: 11.5, fontWeight: 600,
-                            transition: 'all 0.15s',
-                          }}
-                        >
-                          <Edit2 size={12} /> {r.status === 'approved' ? 'View' : 'Edit'}
-                        </button>
-                        {(['pdf'] as const).map((fmt) => (
+                          <StatusIcon size={11} /> {st.label}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12.5, color: 'var(--text-3)' }}>
+                        {r.created_at ? format(new Date(r.created_at), 'MMM d, yyyy') : '—'}
+                        <br />
+                        <span style={{ fontSize: 11 }}>{r.created_at ? format(new Date(r.created_at), 'h:mm a') : ''}</span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 7, justifyContent: 'flex-end' }}>
                           <button
-                            key={fmt}
-                            onClick={() => handleExport(r.report_id, fmt)}
+                            onClick={() => setEditSoapId(r.consultation_id || r.report_id)}
                             style={{
                               display: 'flex', alignItems: 'center', gap: 5,
-                              padding: '5px 11px', borderRadius: 8, cursor: 'pointer',
-                              background: 'var(--surface-2)', border: '1px solid var(--border)',
-                              fontSize: 11.5, fontWeight: 600, color: 'var(--text-2)',
-                              transition: 'all 0.15s', textTransform: 'uppercase',
+                              padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                              background: r.status === 'approved' ? '#0d9488' : '#7c3aed', color: '#fff',
+                              border: 'none', fontSize: 11.5, fontWeight: 600,
+                              transition: 'all 0.15s',
                             }}
                           >
-                            <Download size={12} /> {fmt}
+                            <Edit2 size={12} /> {r.status === 'approved' ? 'View' : 'Edit'}
                           </button>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                          {(['pdf'] as const).map((fmt) => (
+                            <button
+                              key={fmt}
+                              onClick={() => handleExport(r.report_id, fmt)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '5px 11px', borderRadius: 8, cursor: 'pointer',
+                                background: 'var(--surface-2)', border: '1px solid var(--border)',
+                                fontSize: 11.5, fontWeight: 600, color: 'var(--text-2)',
+                                transition: 'all 0.15s', textTransform: 'uppercase',
+                              }}
+                            >
+                              <Download size={12} /> {fmt}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
