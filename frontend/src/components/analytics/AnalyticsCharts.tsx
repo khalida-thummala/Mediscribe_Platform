@@ -27,7 +27,7 @@ export default function AnalyticsCharts() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* ── Summary Stat Cards ─────────────── */}
       {sum && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
           {[
             { label: 'Avg Duration',    value: `${sum.avg_duration_minutes ?? 0} min`, icon: Timer,     color: '#3b82f6', bg: '#eff6ff' },
             { label: 'Reports Exported',value: sum.reports_exported ?? 0,              icon: BarChart2,  color: '#7c3aed', bg: '#f5f3ff' },
@@ -55,7 +55,7 @@ export default function AnalyticsCharts() {
       )}
 
       {/* ── Charts Row ─────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Consultations by Type */}
         <div className="card">
           <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -153,70 +153,72 @@ export default function AnalyticsCharts() {
             {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 44, borderRadius: 8 }} />)}
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                {['Metric', 'Target', 'Current', 'Progress', 'Status'].map((h) => (
-                  <th key={h}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {kpiList.length === 0 ? (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>
-                    No KPI data available
-                  </td>
+                  {['Metric', 'Target', 'Current', 'Progress', 'Status'].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
                 </tr>
-              ) : kpiList.map((k: any, i: number) => {
-                const pct = Math.min(parseFloat(k.current) || 0, 100)
-                return (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 500, color: 'var(--text-1)' }}>{k.metric}</td>
-                    <td>
-                      <code style={{
-                        fontSize: 12, background: 'var(--surface-2)',
-                        padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)',
-                      }}>
-                        {k.target}
-                      </code>
-                    </td>
-                    <td>
-                      <span style={{
-                        fontSize: 13, fontWeight: 700,
-                        color: k.met ? '#059669' : '#d97706',
-                      }}>
-                        {k.current}
-                      </span>
-                    </td>
-                    <td style={{ minWidth: 120 }}>
-                      <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 20, overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%', borderRadius: 20, width: `${pct}%`,
-                          background: k.met ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #f59e0b, #fbbf24)',
-                          transition: 'width 0.6s ease',
-                        }} />
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '3px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                        background: k.met ? '#ecfdf5' : '#fffbeb',
-                        color: k.met ? '#059669' : '#d97706',
-                        border: `1px solid ${k.met ? '#a7f3d0' : '#fde68a'}`,
-                      }}>
-                        {k.met
-                          ? <><CheckCircle2 size={11} /> Met</>
-                          : <><XCircle size={11} /> Missed</>
-                        }
-                      </span>
+              </thead>
+              <tbody>
+                {kpiList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>
+                      No KPI data available
                     </td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                ) : kpiList.map((k: any, i: number) => {
+                  const pct = Math.min(parseFloat(k.current) || 0, 100)
+                  return (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 500, color: 'var(--text-1)' }}>{k.metric}</td>
+                      <td>
+                        <code style={{
+                          fontSize: 12, background: 'var(--surface-2)',
+                          padding: '2px 7px', borderRadius: 6, border: '1px solid var(--border)',
+                        }}>
+                          {k.target}
+                        </code>
+                      </td>
+                      <td>
+                        <span style={{
+                          fontSize: 13, fontWeight: 700,
+                          color: k.met ? '#059669' : '#d97706',
+                        }}>
+                          {k.current}
+                        </span>
+                      </td>
+                      <td style={{ minWidth: 120 }}>
+                        <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 20, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 20, width: `${pct}%`,
+                            background: k.met ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+                            transition: 'width 0.6s ease',
+                          }} />
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
+                          background: k.met ? '#ecfdf5' : '#fffbeb',
+                          color: k.met ? '#059669' : '#d97706',
+                          border: `1px solid ${k.met ? '#a7f3d0' : '#fde68a'}`,
+                        }}>
+                          {k.met
+                            ? <><CheckCircle2 size={11} /> Met</>
+                            : <><XCircle size={11} /> Missed</>
+                          }
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
