@@ -1,42 +1,64 @@
-# MediScribe
+# ⚕️ MediScribe
 
-AI-powered clinical documentation platform that auto-generates SOAP notes from doctor-patient consultations using speech-to-text and GPT-4.
+**MediScribe** is a state-of-the-art, AI-powered clinical documentation platform designed to revolutionize the way healthcare professionals handle patient consultations. By leveraging advanced speech-to-text and large language models (GPT-4), MediScribe automates the generation of SOAP (Subjective, Objective, Assessment, Plan) notes, allowing doctors to focus more on patient care and less on paperwork.
 
-## Features
+---
 
-- 🎙 **Live Consultation Recording** — real-time audio with AssemblyAI transcription
-- 📋 **SOAP Note Generation** — GPT-4 powered, with inline editing and approval workflow
-- 🤖 **AI Document Analysis** — upload PDFs/images for clinical review
-- 👥 **Patient Management** — full CRUD with medical history
-- 📄 **Reports** — view, edit, export as PDF or DOCX
-- 📊 **Analytics Dashboard** — KPIs, trends, time saved
-- 🛡 **Audit Trail** — event logging for all clinical actions
-- 🔐 **Auth** — JWT with role-based access control (Admin, Practitioner, Supervisor)
+## ✨ Key Features
 
-## Tech Stack
+- 🎙️ **Live Consultation Recording** — Real-time audio capture with high-fidelity AssemblyAI transcription.
+- 📋 **Automated SOAP Notes** — GPT-4 powered intelligence that transforms raw transcripts into structured clinical documentation.
+- 🤖 **AI Document Analysis** — Upload medical records (PDFs/Images) for automated entity extraction and clinical review.
+- 👥 **Comprehensive Patient Management** — Full-featured electronic health records with medical history, allergies, and medications.
+- 📄 **Dynamic Reports** — View, edit, and export clinical notes in multiple formats including PDF and DOCX.
+- 📊 **Intelligent Analytics** — Real-time KPIs and trends to track productivity and time saved.
+- 🛡️ **Hardened Audit Trail** — HIPAA-aligned event logging for all clinical and administrative actions.
+- 🔐 **Secure RBAC** — Enterprise-grade JWT authentication with Role-Based Access Control (Admin, Practitioner, Supervisor).
+
+---
+
+## 🛠️ Technology Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 + TypeScript + Vite |
-| Backend | FastAPI (Python 3.11) |
-| Database | PostgreSQL |
-| AI | OpenAI GPT-4 / Azure OpenAI |
-| Transcription | AssemblyAI |
-| Storage | Backblaze B2 |
+| **Frontend** | [React 18](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/) |
+| **Styling** | [Tailwind CSS](https://tailwindcss.com/) + Custom CSS Variables |
+| **Backend** | [FastAPI](https://fastapi.tiangolo.com/) (Python 3.11) |
+| **Database** | [PostgreSQL](https://www.postgresql.org/) |
+| **AI/ML** | [OpenAI GPT-4](https://openai.com/) / [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) |
+| **Transcription** | [AssemblyAI](https://www.assemblyai.com/) |
+| **Cloud Storage** | [Backblaze B2](https://www.backblaze.com/b2/cloud-storage.html) |
 
-## Getting Started
+---
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for full setup instructions.
+## 🚀 Getting Started
+
+Follow the detailed instructions in [DEPLOYMENT.md](./DEPLOYMENT.md) to set up your local environment.
+
+### Quick Start
 
 ```bash
-# Backend
-cd backend && pip install -r requirements.txt
+# 1. Clone the repository
+git clone https://github.com/gowthami-29/mediscribe.git
+cd mediscribe
+
+# 2. Spin up the Backend
+cd backend
+python -m venv venv
+source venv/bin/activate # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
 uvicorn app.main:app --reload
 
-# Frontend
-cd frontend && npm install && npm run dev
+# 3. Spin up the Frontend
+cd ../frontend
+npm install
+npm run dev
 ```
 
-## Author
+---
 
-**Thummala Khalida** — MediScribe
+## 📄 License & Author
+
+Developed  by **Thummala Khalida** and ** Gowthami Kanchi **.  
+MediScribe — Empowering Healthcare through AI.
+
