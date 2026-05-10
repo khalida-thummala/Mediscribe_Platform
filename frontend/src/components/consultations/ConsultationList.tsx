@@ -79,7 +79,8 @@ export default function ConsultationList() {
   return (
     <div className="fade-in">
       {/* ── Action Bar ────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      <div className="page-header" style={{ marginBottom: 16 }}>
+        <h2 className="page-title">Consultations</h2>
         <button
           onClick={() => setShowNew(true)}
           className="btn btn-primary btn-sm"
@@ -91,7 +92,7 @@ export default function ConsultationList() {
       </div>
 
       {/* ── Mini Stats ───────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
         {stats.map((s) => {
           const Icon = s.icon
           return (
@@ -121,7 +122,7 @@ export default function ConsultationList() {
 
       {/* ── Table ────────────────────────────── */}
       <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{
+        <div className="stack-on-mobile" style={{
           padding: '16px 22px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
@@ -147,201 +148,203 @@ export default function ConsultationList() {
             </button>
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                {['Patient', 'Type', 'Chief Complaint', 'Status', 'Created', 'Actions'].map((h) => (
-                  <th key={h}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {consultations.map((c: any) => {
-                const patient = getPatient(c.patient_id)
-                const st = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.scheduled
-                return (
-                  <tr key={c.consultation_id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 32, height: 32, borderRadius: 8,
-                          background: 'linear-gradient(135deg, #0d9488, #14b8a6)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0,
-                        }}>
-                          {patient ? `${patient.first_name[0]}${patient.last_name[0]}` : '?'}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
-                            {patient ? `${patient.first_name} ${patient.last_name}` : c.patient_id.slice(0, 8) + '…'}
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {['Patient', 'Type', 'Chief Complaint', 'Status', 'Created', 'Actions'].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {consultations.map((c: any) => {
+                  const patient = getPatient(c.patient_id)
+                  const st = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.scheduled
+                  return (
+                    <tr key={c.consultation_id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 8,
+                            background: 'linear-gradient(135deg, #0d9488, #14b8a6)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0,
+                          }}>
+                            {patient ? `${patient.first_name[0]}${patient.last_name[0]}` : '?'}
                           </div>
-                          {patient?.medical_id && (
-                            <div style={{ fontSize: 11, color: 'var(--text-4)' }}>#{patient.medical_id}</div>
-                          )}
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
+                              {patient ? `${patient.first_name} ${patient.last_name}` : c.patient_id.slice(0, 8) + '…'}
+                            </div>
+                            {patient?.medical_id && (
+                              <div style={{ fontSize: 11, color: 'var(--text-4)' }}>#{patient.medical_id}</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ textTransform: 'capitalize', fontSize: 13 }}>
-                        {c.consultation_type?.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{
-                        maxWidth: 200, display: 'block', overflow: 'hidden',
-                        textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13,
-                        color: 'var(--text-2)',
-                      }}>
-                        {c.chief_complaint ?? '—'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{
-                        display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-                        fontSize: 11.5, fontWeight: 600,
-                        background: st.bg, color: st.color,
-                        border: `1px solid ${st.border}`,
-                      }}>
-                        {st.label}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                      {c.created_at ? format(new Date(c.created_at), 'MMM d, h:mm a') : '—'}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        {/* Start/Resume Button for anything not completed */}
-                        {(c.status === 'scheduled' || c.status === 'pending' || c.status === 'failed_transcription') && (
-                          <button
-                            onClick={() => startMut.mutate(c.consultation_id)}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 5,
-                              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
-                              background: c.status.startsWith('failed') ? '#6b7280' : '#0d9488', 
-                              color: '#fff',
-                              border: 'none', fontSize: 12, fontWeight: 600,
-                              transition: 'all 0.15s',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                            }}
-                          >
-                            <Mic size={12} /> {c.status.startsWith('failed') ? 'Retry' : 'Start Session'}
-                          </button>
-                        )}
-
-                        {c.status === 'failed_soap' && (
-                          <button
-                            onClick={() => generateSoapMut.mutate(c.consultation_id)}
-                            disabled={generateSoapMut.isPending}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 5,
-                              padding: '6px 14px', borderRadius: 8, cursor: generateSoapMut.isPending ? 'not-allowed' : 'pointer',
-                              background: '#7c3aed', color: '#fff',
-                              border: 'none', fontSize: 12, fontWeight: 600,
-                              transition: 'all 0.15s',
-                              boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)',
-                              opacity: generateSoapMut.isPending ? 0.7 : 1,
-                            }}
-                          >
-                            <Sparkles size={12} /> {generateSoapMut.isPending ? 'Generating' : 'Generate SOAP'}
-                          </button>
-                        )}
-                        
-                        {c.status === 'in_progress' && (
-                          <button
-                            onClick={() => setActiveId(c.consultation_id)}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 5,
-                              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
-                              background: '#e11d48', color: '#fff',
-                              border: 'none', fontSize: 12, fontWeight: 600,
-                              transition: 'all 0.15s',
-                              boxShadow: '0 2px 4px rgba(225, 29, 72, 0.2)'
-                            }}
-                          >
-                            <StopCircle size={12} /> Resume
-                          </button>
-                        )}
-
-                        {c.status === 'completed' && (
-                          <div style={{ display: 'flex', gap: 5 }}>
+                      </td>
+                      <td>
+                        <span style={{ textTransform: 'capitalize', fontSize: 13 }}>
+                          {c.consultation_type?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{
+                          maxWidth: 200, display: 'block', overflow: 'hidden',
+                          textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13,
+                          color: 'var(--text-2)',
+                        }}>
+                          {c.chief_complaint ?? '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+                          fontSize: 11.5, fontWeight: 600,
+                          background: st.bg, color: st.color,
+                          border: `1px solid ${st.border}`,
+                        }}>
+                          {st.label}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                        {c.created_at ? format(new Date(c.created_at), 'MMM d, h:mm a') : '—'}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          {/* Start/Resume Button for anything not completed */}
+                          {(c.status === 'scheduled' || c.status === 'pending' || c.status === 'failed_transcription') && (
                             <button
-                              onClick={() => window.location.href = `/consultations/${c.consultation_id}/soap`}
+                              onClick={() => startMut.mutate(c.consultation_id)}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 5,
                                 padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                                background: c.status.startsWith('failed') ? '#6b7280' : '#0d9488', 
+                                color: '#fff',
+                                border: 'none', fontSize: 12, fontWeight: 600,
+                                transition: 'all 0.15s',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}
+                            >
+                              <Mic size={12} /> {c.status.startsWith('failed') ? 'Retry' : 'Start Session'}
+                            </button>
+                          )}
+  
+                          {c.status === 'failed_soap' && (
+                            <button
+                              onClick={() => generateSoapMut.mutate(c.consultation_id)}
+                              disabled={generateSoapMut.isPending}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '6px 14px', borderRadius: 8, cursor: generateSoapMut.isPending ? 'not-allowed' : 'pointer',
                                 background: '#7c3aed', color: '#fff',
                                 border: 'none', fontSize: 12, fontWeight: 600,
                                 transition: 'all 0.15s',
-                                boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)'
+                                boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)',
+                                opacity: generateSoapMut.isPending ? 0.7 : 1,
                               }}
                             >
-                              <Stethoscope size={12} /> View SOAP
+                              <Sparkles size={12} /> {generateSoapMut.isPending ? 'Generating' : 'Generate SOAP'}
                             </button>
+                          )}
+                          
+                          {c.status === 'in_progress' && (
                             <button
-                              onClick={() => setEditSoapId(c.consultation_id)}
+                              onClick={() => setActiveId(c.consultation_id)}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 5,
                                 padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
-                                background: '#fff', color: '#7c3aed',
-                                border: '1px solid #ddd6fe', fontSize: 12, fontWeight: 600,
+                                background: '#e11d48', color: '#fff',
+                                border: 'none', fontSize: 12, fontWeight: 600,
+                                transition: 'all 0.15s',
+                                boxShadow: '0 2px 4px rgba(225, 29, 72, 0.2)'
+                              }}
+                            >
+                              <StopCircle size={12} /> Resume
+                            </button>
+                          )}
+  
+                          {c.status === 'completed' && (
+                            <div style={{ display: 'flex', gap: 5 }}>
+                              <button
+                                onClick={() => window.location.href = `/consultations/${c.consultation_id}/soap`}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 5,
+                                  padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                                  background: '#7c3aed', color: '#fff',
+                                  border: 'none', fontSize: 12, fontWeight: 600,
+                                  transition: 'all 0.15s',
+                                  boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)'
+                                }}
+                              >
+                                <Stethoscope size={12} /> View SOAP
+                              </button>
+                              <button
+                                onClick={() => setEditSoapId(c.consultation_id)}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 5,
+                                  padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                                  background: '#fff', color: '#7c3aed',
+                                  border: '1px solid #ddd6fe', fontSize: 12, fontWeight: 600,
+                                  transition: 'all 0.15s',
+                                }}
+                                title="Edit SOAP Note"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                            </div>
+                          )}
+  
+                          {c.status !== 'in_progress' && (
+                            <button
+                              onClick={() => setReconsultData({
+                                patient_id: c.patient_id,
+                                consultation_type: c.consultation_type,
+                                chief_complaint: '',
+                              })}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                                background: '#fff', color: '#0d9488',
+                                border: '1px solid #99f6e4', fontSize: 12, fontWeight: 600,
                                 transition: 'all 0.15s',
                               }}
-                              title="Edit SOAP Note"
+                              title="Start a new consultation for the same patient"
                             >
-                              <Edit2 size={12} />
+                              <RefreshCw size={12} /> Reconsult
+                            </button>
+                          )}
+                          
+                          {/* Edit/Delete Buttons */}
+                          <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                            <button 
+                              className="btn-icon" 
+                              style={{ padding: 6, color: 'var(--text-3)' }}
+                              onClick={() => setEditItem(c)}
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button 
+                              className="btn-icon" 
+                              style={{ padding: 6, color: '#f43f5e' }}
+                              onClick={() => {
+                                if(confirm('Are you sure you want to delete this consultation?')) {
+                                  deleteMut.mutate(c.consultation_id);
+                                }
+                              }}
+                              disabled={deleteMut.isPending}
+                            >
+                              <Trash2 size={14} />
                             </button>
                           </div>
-                        )}
-
-                        {c.status !== 'in_progress' && (
-                          <button
-                            onClick={() => setReconsultData({
-                              patient_id: c.patient_id,
-                              consultation_type: c.consultation_type,
-                              chief_complaint: '',
-                            })}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 5,
-                              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
-                              background: '#fff', color: '#0d9488',
-                              border: '1px solid #99f6e4', fontSize: 12, fontWeight: 600,
-                              transition: 'all 0.15s',
-                            }}
-                            title="Start a new consultation for the same patient"
-                          >
-                            <RefreshCw size={12} /> Reconsult
-                          </button>
-                        )}
-                        
-                        {/* Edit/Delete Buttons */}
-                        <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-                          <button 
-                            className="btn-icon" 
-                            style={{ padding: 6, color: 'var(--text-3)' }}
-                            onClick={() => setEditItem(c)}
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button 
-                            className="btn-icon" 
-                            style={{ padding: 6, color: '#f43f5e' }}
-                            onClick={() => {
-                              if(confirm('Are you sure you want to delete this consultation?')) {
-                                deleteMut.mutate(c.consultation_id);
-                              }
-                            }}
-                            disabled={deleteMut.isPending}
-                          >
-                            <Trash2 size={14} />
-                          </button>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
