@@ -54,7 +54,8 @@ export default function PatientTable() {
   return (
     <div className="fade-in">
       {/* ── Action Bar ────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      <div className="page-header" style={{ marginBottom: 16 }}>
+        <h2 className="page-title">Patient Management</h2>
         <button
           onClick={() => { setEditing(null); setShowForm(true) }}
           className="btn btn-primary btn-sm"
@@ -66,7 +67,7 @@ export default function PatientTable() {
       </div>
 
       {/* ── Stats ────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
         {[
           { icon: Users,     label: 'Total Patients', value: patients.length,  color: '#3b82f6', bg: '#eff6ff' },
           { icon: UserCheck, label: 'Active',          value: activeCount,      color: '#10b981', bg: '#ecfdf5' },
@@ -101,7 +102,7 @@ export default function PatientTable() {
       {/* ── Table Card ───────────────────────── */}
       <div className="card" style={{ overflow: 'hidden' }}>
         {/* Toolbar */}
-        <div style={{
+        <div className="stack-on-mobile" style={{
           padding: '14px 20px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
@@ -115,7 +116,7 @@ export default function PatientTable() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, medical ID or email…"
               className="form-control"
-              style={{ paddingLeft: 32, maxWidth: 380 }}
+              style={{ paddingLeft: 32, width: '100%', maxWidth: 'none' }}
             />
           </div>
           <span style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
@@ -142,110 +143,112 @@ export default function PatientTable() {
             )}
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                {['Patient', 'Medical ID', 'Gender', 'Date of Birth', 'Status', 'Registered', 'Actions'].map((h) => (
-                  <th key={h}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => {
-                const initials = getInitials(p.first_name, p.last_name)
-                const [avatarBg, avatarColor] = getAvatarColor(p.first_name ?? 'A')
-                return (
-                  <tr key={p.patient_id}>
-                    {/* Patient */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                        <div style={{
-                          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                          background: avatarBg, color: avatarColor,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 12.5, fontWeight: 700,
-                          border: `1.5px solid ${avatarColor}22`,
-                        }}>
-                          {initials}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text-1)' }}>
-                            {p.first_name} {p.last_name}
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {['Patient', 'Medical ID', 'Gender', 'Date of Birth', 'Status', 'Registered', 'Actions'].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p) => {
+                  const initials = getInitials(p.first_name, p.last_name)
+                  const [avatarBg, avatarColor] = getAvatarColor(p.first_name ?? 'A')
+                  return (
+                    <tr key={p.patient_id}>
+                      {/* Patient */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                            background: avatarBg, color: avatarColor,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 12.5, fontWeight: 700,
+                            border: `1.5px solid ${avatarColor}22`,
+                          }}>
+                            {initials}
                           </div>
-                          <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{p.email ?? '—'}</div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text-1)' }}>
+                              {p.first_name} {p.last_name}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{p.email ?? '—'}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    {/* Medical ID */}
-                    <td>
-                      <code style={{
-                        fontSize: 12, background: 'var(--surface-2)',
-                        padding: '2px 7px', borderRadius: 6,
-                        border: '1px solid var(--border)', color: 'var(--text-2)',
-                      }}>
-                        {p.medical_id ?? '—'}
-                      </code>
-                    </td>
-                    {/* Gender */}
-                    <td style={{ textTransform: 'capitalize', fontSize: 13 }}>{p.gender ?? '—'}</td>
-                    {/* DOB */}
-                    <td style={{ fontSize: 13 }}>
-                      {p.date_of_birth ? format(new Date(p.date_of_birth), 'MMM d, yyyy') : '—'}
-                    </td>
-                    {/* Status */}
-                    <td>
-                      <span style={{
-                        display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-                        fontSize: 11.5, fontWeight: 600,
-                        background: p.status === 'active' ? '#ecfdf5' : p.status === 'archived' ? '#f3f4f6' : '#fffbeb',
-                        color: p.status === 'active' ? '#059669' : p.status === 'archived' ? '#4b5563' : '#d97706',
-                        border: `1px solid ${p.status === 'active' ? '#a7f3d0' : p.status === 'archived' ? '#e5e7eb' : '#fde68a'}`,
-                      }}>
-                        {p.status ?? 'active'}
-                      </span>
-                    </td>
-                    {/* Registered */}
-                    <td style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                      {p.created_at ? format(new Date(p.created_at), 'MMM d, yyyy') : '—'}
-                    </td>
-                    {/* Actions */}
-                    <td>
-                      <div style={{ display: 'flex', gap: 7, justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => { setEditing(p); setShowForm(true) }}
-                          title="Edit patient"
-                          style={{
-                            width: 30, height: 30, borderRadius: 8, cursor: 'pointer',
-                            background: 'var(--surface-2)', border: '1px solid var(--border)',
-                            color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#2563eb'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => { if (confirm(`Archive ${p.first_name} ${p.last_name}?`)) deleteMut.mutate(p.patient_id) }}
-                          title="Archive patient"
-                          style={{
-                            width: 30, height: 30, borderRadius: 8, cursor: 'pointer',
-                            background: 'var(--surface-2)', border: '1px solid var(--border)',
-                            color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.color = '#e11d48'; e.currentTarget.style.borderColor = '#fecdd3'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      {/* Medical ID */}
+                      <td>
+                        <code style={{
+                          fontSize: 12, background: 'var(--surface-2)',
+                          padding: '2px 7px', borderRadius: 6,
+                          border: '1px solid var(--border)', color: 'var(--text-2)',
+                        }}>
+                          {p.medical_id ?? '—'}
+                        </code>
+                      </td>
+                      {/* Gender */}
+                      <td style={{ textTransform: 'capitalize', fontSize: 13 }}>{p.gender ?? '—'}</td>
+                      {/* DOB */}
+                      <td style={{ fontSize: 13 }}>
+                        {p.date_of_birth ? format(new Date(p.date_of_birth), 'MMM d, yyyy') : '—'}
+                      </td>
+                      {/* Status */}
+                      <td>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+                          fontSize: 11.5, fontWeight: 600,
+                          background: p.status === 'active' ? '#ecfdf5' : p.status === 'archived' ? '#f3f4f6' : '#fffbeb',
+                          color: p.status === 'active' ? '#059669' : p.status === 'archived' ? '#4b5563' : '#d97706',
+                          border: `1px solid ${p.status === 'active' ? '#a7f3d0' : p.status === 'archived' ? '#e5e7eb' : '#fde68a'}`,
+                        }}>
+                          {p.status ?? 'active'}
+                        </span>
+                      </td>
+                      {/* Registered */}
+                      <td style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                        {p.created_at ? format(new Date(p.created_at), 'MMM d, yyyy') : '—'}
+                      </td>
+                      {/* Actions */}
+                      <td>
+                        <div style={{ display: 'flex', gap: 7, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => { setEditing(p); setShowForm(true) }}
+                            title="Edit patient"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8, cursor: 'pointer',
+                              background: 'var(--surface-2)', border: '1px solid var(--border)',
+                              color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#2563eb'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => { if (confirm(`Archive ${p.first_name} ${p.last_name}?`)) deleteMut.mutate(p.patient_id) }}
+                            title="Archive patient"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8, cursor: 'pointer',
+                              background: 'var(--surface-2)', border: '1px solid var(--border)',
+                              color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.color = '#e11d48'; e.currentTarget.style.borderColor = '#fecdd3'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
