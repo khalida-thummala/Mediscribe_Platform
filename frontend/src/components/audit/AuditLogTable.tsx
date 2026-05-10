@@ -41,40 +41,40 @@ export default function AuditLogTable() {
           <Download size={14} /> Export CSV
         </button>
       </div>
-      <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: 'var(--surface-hover)', borderBottom: '1px solid var(--border)' }}>
-              {['Timestamp', 'User', 'Action', 'Resource', 'IP', 'Status'].map((h) => (
-                <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Loading audit logs…</td></tr>}
-            {!isLoading && events.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>No audit events found</td></tr>}
-            {events.map((e: any) => (
-              <tr key={e.event_id} style={{ borderBottom: '1px solid var(--border)', fontSize: 12.5 }}
-                onMouseEnter={el => (el.currentTarget.style.background = 'var(--surface-hover)')}
-                onMouseLeave={el => (el.currentTarget.style.background = '')}>
-                <td style={{ padding: '11px 16px', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: 11.5 }}>
-                  {e.timestamp ? format(new Date(e.timestamp), 'MMM d, HH:mm:ss') : '—'}
-                </td>
-                <td style={{ padding: '11px 16px', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: 11.5 }}>
-                  {String(e.user_id).slice(0, 8)}…
-                </td>
-                <td style={{ padding: '11px 16px', color: 'var(--text-1)', fontWeight: 500 }}>
-                  <code style={{ background: 'var(--surface-hover)', padding: '2px 7px', borderRadius: 4, fontSize: 11.5 }}>{e.action}</code>
-                </td>
-                <td style={{ padding: '11px 16px', color: 'var(--text-2)' }}>{e.resource}</td>
-                <td style={{ padding: '11px 16px', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: 11.5 }}>{e.ip_address}</td>
-                <td style={{ padding: '11px 16px' }}>
-                  <Badge variant={e.status === 'success' ? 'green' : e.status === 'info' ? 'blue' : 'red'}>{e.status}</Badge>
-                </td>
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {['Timestamp', 'User', 'Action', 'Resource', 'IP', 'Status'].map((h) => (
+                  <th key={h}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {isLoading && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>Loading audit logs…</td></tr>}
+              {!isLoading && events.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-3)' }}>No audit events found</td></tr>}
+              {events.map((e: any) => (
+                <tr key={e.event_id}>
+                  <td style={{ color: 'var(--text-3)', fontFamily: 'monospace', fontSize: 11.5 }}>
+                    {e.timestamp ? format(new Date(e.timestamp), 'MMM d, HH:mm:ss') : '—'}
+                  </td>
+                  <td style={{ color: 'var(--text-2)', fontFamily: 'monospace', fontSize: 11.5 }}>
+                    {String(e.user_id).slice(0, 8)}…
+                  </td>
+                  <td style={{ color: 'var(--text-1)', fontWeight: 500 }}>
+                    <code style={{ background: 'var(--surface-hover)', padding: '2px 7px', borderRadius: 4, fontSize: 11.5 }}>{e.action}</code>
+                  </td>
+                  <td style={{ color: 'var(--text-2)' }}>{e.resource}</td>
+                  <td style={{ color: 'var(--text-3)', fontFamily: 'monospace', fontSize: 11.5 }}>{e.ip_address}</td>
+                  <td>
+                    <Badge variant={e.status === 'success' ? 'green' : e.status === 'info' ? 'blue' : 'red'}>{e.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
