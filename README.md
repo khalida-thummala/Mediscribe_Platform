@@ -59,6 +59,6 @@ npm run dev
 
 ## 📄 License & Author
 
-Developed  by **Thummala Khalida** and ** Gowthami Kanchi **.  
+Developed  by **Thummala Khalida** and **Gowthami Kanchi**.  
 MediScribe — Empowering Healthcare through AI.
 
