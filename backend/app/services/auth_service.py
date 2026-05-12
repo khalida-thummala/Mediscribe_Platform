@@ -92,35 +92,67 @@ class AuthService:
 
     @staticmethod
     def login_user(db: Session, user: UserLogin):
+        import time
+
         try:
+            # ---------------- DB QUERY ----------------
+            t1 = time.time()
+
             db_user = db.query(User).filter(User.email == user.email).first()
+
+            print("DB QUERY TIME:", time.time() - t1)
 
             if not db_user:
                 raise HTTPException(status_code=401, detail="Invalid credentials")
 
-            # Check if locked
+            # ---------------- ACCOUNT LOCK CHECK ----------------
             if db_user.locked_until and db_user.locked_until > datetime.utcnow():
-                raise HTTPException(status_code=403, detail="Account locked. Please try again later.")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Account locked. Please try again later."
+                )
 
-            if not verify_password(user.password, db_user.password_hash):
+            # ---------------- PASSWORD VERIFY ----------------
+            t2 = time.time()
+
+            password_valid = verify_password(
+                user.password,
+                db_user.password_hash
+            )
+
+            print("PASSWORD VERIFY TIME:", time.time() - t2)
+
+            if not password_valid:
                 db_user.failed_login_attempts += 1
-                if db_user.failed_login_attempts >= 5:
-                    # Lock for 15 mins
-                    from datetime import timedelta
-                    db_user.locked_until = datetime.utcnow() + timedelta(minutes=15)
-                db.commit()
-                
-                # Log failed attempt
-                audit_service.log_event(db, action="login_failed", details={"email": user.email}, status="failure")
-                raise HTTPException(status_code=401, detail="Invalid credentials")
 
-            # Update login info
+                if db_user.failed_login_attempts >= 5:
+                    db_user.locked_until = datetime.utcnow() + timedelta(minutes=15)
+
+                db.commit()
+
+                # Log failed attempt
+                audit_service.log_event(
+                    db,
+                    action="login_failed",
+                    details={"email": user.email},
+                    status="failure"
+                )
+
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid credentials"
+                )
+
+            # ---------------- UPDATE LOGIN INFO ----------------
             db_user.last_login = datetime.utcnow()
             db_user.failed_login_attempts = 0
             db_user.locked_until = None
+
             db.commit()
 
-            # Create tokens
+            # ---------------- TOKEN CREATION ----------------
+            t3 = time.time()
+
             access_token = create_access_token({
                 "sub": db_user.email,
                 "role": db_user.role,
@@ -131,14 +163,17 @@ class AuthService:
                 "sub": db_user.email
             })
 
-            # Log success
+            print("TOKEN TIME:", time.time() - t3)
+
+            # ---------------- AUDIT LOG ----------------
             audit_service.log_event(
-                db, 
-                action="login_success", 
-                user_id=db_user.user_id, 
+                db,
+                action="login_success",
+                user_id=db_user.user_id,
                 organization_id=db_user.organization_id
             )
 
+            # ---------------- RETURN ----------------
             return {
                 "access_token": access_token,
                 "refresh_token": refresh_token,
@@ -151,12 +186,17 @@ class AuthService:
                     "organization_id": db_user.organization_id
                 }
             }
+
         except HTTPException:
             raise
+
         except Exception as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+            raise HTTPException(
+                status_code=500,
+                detail=f"Internal server error: {str(e)}"
+            )
     @staticmethod
     def verify_otp(db: Session, user_id: str, otp: str):
         user = db.query(User).filter(User.user_id == user_id).first()
