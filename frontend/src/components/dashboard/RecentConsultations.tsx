@@ -21,7 +21,7 @@ export default function RecentConsultations() {
     }}>
       <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>Recent Consultations</h3>
-        <button onClick={() => navigate('/consultations')} style={{ fontSize: 12, color: 'var(--teal)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+        <button onClick={() => navigate('/app/consultations')} style={{ fontSize: 12, color: 'var(--teal)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
           View all →
         </button>
       </div>
@@ -35,7 +35,7 @@ export default function RecentConsultations() {
         {consultations.map((c: any) => (
           <div
             key={c.consultation_id}
-            onClick={() => navigate(`/consultations`)}
+            onClick={() => navigate(`/app/consultations`)}
             style={{
               padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 14,
               borderBottom: '1px solid var(--border)', cursor: 'pointer',

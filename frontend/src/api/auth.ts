@@ -21,6 +21,12 @@ export const authApi = {
 
   updateSecurity: (data: any) => apiClient.put('/auth/security', data).then((r) => r.data),
 
-  verifyOtp: (user_id: string, otp: string) => 
+  verifyOtp: (user_id: string, otp: string) =>
     apiClient.post('/auth/verify-otp', { user_id, otp }).then((r) => r.data),
+
+  forgotPassword: (email: string) =>
+    apiClient.post('/auth/forgot-password', { email }).then((r) => r.data),
+
+  resetPassword: (token: string, new_password: string) =>
+    apiClient.post('/auth/reset-password', { token, new_password }).then((r) => r.data),
 }

@@ -12,7 +12,7 @@ interface Props {
 
 export default function AnalysisResultPanel({ analysisId }: Props) {
   const qc = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'soap' | 'audit'>('soap')
+  const [activeTab, setActiveTab] = useState<'soap' | 'audit' | 'source'>('soap')
   
   const { data, isLoading } = useQuery({
     queryKey: ['analysis', analysisId],
@@ -47,51 +47,44 @@ export default function AnalysisResultPanel({ analysisId }: Props) {
     { key: 'generated_plan', label: 'Plan', color: '#2980b9' },
   ]
 
+  const tabStyle = (id: string) => ({
+    padding: '10px 0',
+    fontSize: 13,
+    fontWeight: 600,
+    color: activeTab === id ? 'var(--teal)' : 'var(--text-3)',
+    borderBottom: activeTab === id ? '2px solid var(--teal)' : 'none',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    background: 'none',
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
+  })
+
   return (
     <div>
       {/* Tabs */}
       <div style={{ 
         display: 'flex', 
-        gap: 20, 
+        gap: 24, 
         borderBottom: '1px solid var(--border)', 
         marginBottom: 20,
         padding: '0 4px'
       }}>
-        <button
-          onClick={() => setActiveTab('soap')}
-          style={{
-            padding: '10px 0',
-            fontSize: 13,
-            fontWeight: 600,
-            color: activeTab === 'soap' ? 'var(--teal)' : 'var(--text-3)',
-            borderBottom: activeTab === 'soap' ? '2px solid var(--teal)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
+        <button onClick={() => setActiveTab('soap')} style={tabStyle('soap') as any}>
           <FileText size={15} /> Generated SOAP
         </button>
-        <button
-          onClick={() => setActiveTab('audit')}
-          style={{
-            padding: '10px 0',
-            fontSize: 13,
-            fontWeight: 600,
-            color: activeTab === 'audit' ? 'var(--teal)' : 'var(--text-3)',
-            borderBottom: activeTab === 'audit' ? '2px solid var(--teal)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
+        <button onClick={() => setActiveTab('audit')} style={tabStyle('audit') as any}>
           <Activity size={15} /> Clinical Audit
         </button>
+        <button onClick={() => setActiveTab('source')} style={tabStyle('source') as any}>
+          <Sparkles size={15} /> Extracted Text
+        </button>
       </div>
+
 
       {activeTab === 'soap' ? (
         <div className="fade-in">
@@ -131,9 +124,32 @@ export default function AnalysisResultPanel({ analysisId }: Props) {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'audit' ? (
         <div className="fade-in">
           <ComparisonPanel data={data.comparison_data} />
+        </div>
+      ) : (
+        <div className="fade-in">
+          <div style={{ 
+            background: 'var(--surface-hover)', 
+            border: '1px solid var(--border)', 
+            borderRadius: 10, 
+            padding: 20,
+            maxHeight: 400,
+            overflowY: 'auto'
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', marginBottom: 12 }}>Raw Extracted Content</div>
+            <pre style={{ 
+              fontSize: 12.5, 
+              lineHeight: 1.6, 
+              color: 'var(--text-2)', 
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'inherit',
+              margin: 0
+            }}>
+              {data.extracted_text || 'No text extracted from this document.'}
+            </pre>
+          </div>
         </div>
       )}
 

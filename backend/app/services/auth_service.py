@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 import random
 import string
+import secrets
 from app.models.user import User
 from app.models.organization import Organization
 from app.schemas.user import UserCreate, UserLogin
@@ -12,6 +13,9 @@ from app.core.jwt import create_access_token, create_refresh_token
 
 from app.services.audit_service import audit_service
 from app.services.notification_service import NotificationService
+
+# In-memory store for reset tokens (use Redis/DB in production)
+_reset_tokens: dict = {}
 
 class AuthService:
     @staticmethod
@@ -28,7 +32,7 @@ class AuthService:
         try:
             # 2. Check if org exists with this email, or create it
             org = db.query(Organization).filter(Organization.email == user.email).first()
-            
+
             if not org:
                 org = Organization(
                     name=user.organization_name,
@@ -38,10 +42,10 @@ class AuthService:
                 db.add(org)
                 db.flush()
 
-            # 3. Hash password (uses rounds=12 from security.py)
+            # 3. Hash password
             hashed = hash_password(user.password)
 
-            # 4. Create user (OTP Removed - Direct Activation)
+            # 4. Create user with all provided fields
             new_user = User(
                 email=user.email,
                 password_hash=hashed,
@@ -49,24 +53,26 @@ class AuthService:
                 phone=user.phone,
                 license_number=user.license_number,
                 organization_id=org.organization_id,
-                role="admin",
+                role=user.role or "practitioner",
+                timezone=user.timezone or "UTC",
+                language_preference=user.language_preference or "en",
                 status="active",
                 email_verified=True,
                 phone_verified=True
             )
-            
+
             db.add(new_user)
             db.commit()
 
             # 5. Log event
             audit_service.log_event(
-                db, 
-                action="user_registration", 
+                db,
+                action="user_registration",
                 user_id=new_user.user_id,
                 organization_id=org.organization_id,
                 details={"email": user.email}
             )
-            
+
             return {
                 "message": "Registration successful. You can now log in.",
                 "user_id": new_user.user_id
@@ -195,15 +201,95 @@ class AuthService:
         user = db.query(User).filter(User.user_id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         if "current_password" in data and "new_password" in data:
             if not verify_password(data["current_password"], user.password_hash):
                 raise HTTPException(status_code=400, detail="Incorrect current password")
             user.password_hash = hash_password(data["new_password"])
-        
+
         if "twofa_enabled" in data:
             user.twofa_enabled = data["twofa_enabled"]
-            
+
         db.commit()
         return {"message": "Security settings updated successfully"}
+
+    # ── Forgot / Reset Password ──────────────────────────────────────────────
+
+    @staticmethod
+    def forgot_password(db: Session, email: str) -> dict:
+        """
+        Generate a short-lived reset token and store it.
+        In production, email the link to the user.
+        Token expires in 30 minutes.
+        """
+        user = db.query(User).filter(User.email == email).first()
+        # Always return success to prevent email enumeration
+        if not user:
+            return {"message": "If that email is registered, a reset link has been sent."}
+
+        # Generate a secure URL-safe token
+        token = secrets.token_urlsafe(32)
+        expiry = datetime.utcnow() + timedelta(minutes=30)
+
+        # Store in the in-memory dict (key = token, value = {user_id, expiry})
+        _reset_tokens[token] = {
+            "user_id": str(user.user_id),
+            "expiry":  expiry,
+        }
+
+        # Log the event
+        audit_service.log_event(
+            db,
+            action="password_reset_requested",
+            user_id=user.user_id,
+            organization_id=user.organization_id,
+            details={"email": email},
+        )
+
+        # In production: send email with link like
+        #   https://app.mediscribe.ai/reset-password?token=<token>
+        # For now, return the token in the response so the frontend can use it
+        # during development (remove in production).
+        print(f"[DEV] Password reset token for {email}: {token}")
+
+        return {
+            "message": "If that email is registered, a reset link has been sent.",
+            # Remove the line below in production:
+            "dev_token": token,
+        }
+
+    @staticmethod
+    def reset_password(db: Session, token: str, new_password: str) -> dict:
+        """
+        Validate the reset token and update the user's password.
+        """
+        entry = _reset_tokens.get(token)
+        if not entry:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
+
+        if datetime.utcnow() > entry["expiry"]:
+            _reset_tokens.pop(token, None)
+            raise HTTPException(status_code=400, detail="Reset token has expired. Please request a new one.")
+
+        user = db.query(User).filter(User.user_id == entry["user_id"]).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        user.password_hash = hash_password(new_password)
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
+
+        # Invalidate the token after use
+        _reset_tokens.pop(token, None)
+
+        audit_service.log_event(
+            db,
+            action="password_reset_completed",
+            user_id=user.user_id,
+            organization_id=user.organization_id,
+            details={"email": user.email},
+        )
+
+        return {"message": "Password updated successfully. You can now sign in."}
 

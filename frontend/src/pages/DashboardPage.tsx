@@ -18,10 +18,10 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }
 }
 
 const QUICK_ACTIONS = [
-  { icon: Stethoscope, title: 'New Consultation',  sub: 'Start recording + transcription', path: '/consultations', color: '#f59e0b', bg: '#fffbeb' },
-  { icon: BrainCircuit,title: 'AI Analysis',       sub: 'Upload document for AI review',   path: '/ai-analysis',  color: '#7c3aed', bg: '#f5f3ff' },
-  { icon: UserPlus,    title: 'Add Patient',        sub: 'Register a patient record',       path: '/patients',     color: '#10b981', bg: '#ecfdf5' },
-  { icon: Download,    title: 'Export Report',      sub: 'Download as PDF',                path: '/reports',      color: '#3b82f6', bg: '#eff6ff' },
+  { icon: Stethoscope, title: 'New Consultation',  sub: 'Start recording + transcription', path: '/app/consultations', color: '#f59e0b', bg: '#fffbeb' },
+  { icon: BrainCircuit,title: 'AI Analysis',       sub: 'Upload document for AI review',   path: '/app/ai-analysis',  color: '#7c3aed', bg: '#f5f3ff' },
+  { icon: UserPlus,    title: 'Add Patient',        sub: 'Register a patient record',       path: '/app/patients',     color: '#10b981', bg: '#ecfdf5' },
+  { icon: Download,    title: 'Export Report',      sub: 'Download as PDF',                path: '/app/reports',      color: '#3b82f6', bg: '#eff6ff' },
 ]
 
 export default function DashboardPage() {
@@ -99,7 +99,7 @@ export default function DashboardPage() {
         </div>
 
         <button
-          onClick={() => navigate('/consultations')}
+          onClick={() => navigate('/app/consultations')}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '11px 20px', borderRadius: 12,
@@ -168,7 +168,7 @@ export default function DashboardPage() {
                 <h3 style={{ fontSize: 15, margin: 0 }}>Recent Consultations</h3>
                 <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Latest patient sessions</p>
               </div>
-              <button className="btn btn-sm" onClick={() => navigate('/consultations')}
+              <button className="btn btn-sm" onClick={() => navigate('/app/consultations')}
                 style={{ display: 'flex', alignItems: 'center', gap: 5, width: 'fit-content' }}>
                 View All <ArrowRight size={12} />
               </button>
@@ -184,7 +184,7 @@ export default function DashboardPage() {
                 <div className="empty-state-icon">🎙</div>
                 <h3>No consultations yet</h3>
                 <p>Start your first consultation to see recent activity here</p>
-                <button className="btn btn-primary btn-sm" onClick={() => navigate('/consultations')}>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate('/app/consultations')}>
                   Start Consultation
                 </button>
               </div>
@@ -201,7 +201,7 @@ export default function DashboardPage() {
                   {recentConsultations.map((c) => {
                     const st = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.scheduled
                     return (
-                      <tr key={c.consultation_id} onClick={() => navigate(`/consultations/${c.consultation_id}`)}>
+                      <tr key={c.consultation_id} onClick={() => navigate(`/app/consultations/${c.consultation_id}`)}>
                         <td>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>
                             {c.patient_id.substring(0, 8)}…

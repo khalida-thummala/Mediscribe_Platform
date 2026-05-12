@@ -6,32 +6,90 @@ const OrganizationSettings: React.FC = () => {
 
   const details = [
     { label: 'Organization ID', value: (user as any)?.organization_id },
-    { label: 'Role', value: user?.role },
     { label: 'Account Status', value: user?.status },
     { label: 'Organization Name', value: (user as any)?.organization_name || 'N/A' },
   ];
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Organization Information</h3>
-        <p className="text-sm text-gray-500">Details about your healthcare facility and membership.</p>
+        <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>
+          Organization Information
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
+          Details about your healthcare facility and membership.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }} className="org-grid">
         {details.map((item) => (
-          <div key={item.label} className="p-4 bg-gray-50 border border-gray-100 rounded-xl">
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{item.label}</div>
-            <div className="text-sm font-mono text-gray-800 break-all">{item.value || '—'}</div>
+          <div
+            key={item.label}
+            style={{
+              padding: 16,
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{
+              fontSize: 10.5,
+              fontWeight: 700,
+              color: 'var(--text-4)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.07em',
+              marginBottom: 6,
+            }}>
+              {item.label}
+            </div>
+            <div style={{
+              fontSize: 13,
+              fontFamily: 'monospace',
+              color: 'var(--text-1)',
+              wordBreak: 'break-all',
+            }}>
+              {item.value || '—'}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-        <h4 className="text-sm font-semibold text-blue-900 mb-1">Subscription Plan</h4>
-        <p className="text-xs text-blue-700 mb-3">You are currently on the Professional Plan.</p>
-        <button className="text-xs font-bold text-blue-600 hover:underline">View Billing Details →</button>
+      <div style={{
+        padding: 16,
+        background: 'var(--blue-light)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+      }}>
+        <h4 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--blue)', marginBottom: 6 }}>
+          Subscription Plan
+        </h4>
+        <p style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 12 }}>
+          You are currently on the Professional Plan.
+        </p>
+        <button
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'var(--blue)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            fontFamily: 'inherit',
+            textDecoration: 'underline',
+          }}
+        >
+          View Billing Details →
+        </button>
       </div>
+
+      <style>{`
+        @media (min-width: 768px) {
+          .org-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

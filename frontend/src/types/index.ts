@@ -55,8 +55,10 @@ export interface Patient {
   email?: string
   phone?: string
   address_line1?: string
+  address_line2?: string
   city?: string
   state_province?: string
+  postal_code?: string
   country?: string
   emergency_contact_name?: string
   emergency_contact_phone?: string
@@ -64,12 +66,15 @@ export interface Patient {
   allergies?: string
   current_medications?: string
   insurance_provider?: string
+  insurance_policy?: string
   blood_type?: string
   height_cm?: number
   weight_kg?: number
+  insurance_verified?: boolean
   status: 'active' | 'inactive' | 'archived'
   created_at: string
   updated_at: string
+  deleted_at?: string
 }
 
 export interface CreatePatientPayload {
@@ -80,12 +85,27 @@ export interface CreatePatientPayload {
   medical_id: string
   email?: string
   phone?: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  state_province?: string
+  postal_code?: string
+  country?: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
+  medical_history?: string
   allergies?: string
+  current_medications?: string
+  insurance_provider?: string
+  insurance_policy?: string
   blood_type?: string
+  height_cm?: number
+  weight_kg?: number
+  insurance_verified?: boolean
 }
 
 // ─── Consultation ─────────────────────────────────────────────────────────────
-export type ConsultationStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+export type ConsultationStatus = 'scheduled' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'
 export type TranscriptionStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
 
 export interface Consultation {
@@ -100,6 +120,10 @@ export interface Consultation {
   started_at?: string
   ended_at?: string
   duration_minutes?: number
+  audio_file_id?: string
+  audio_duration_seconds?: number
+  audio_bitrate?: string
+  audio_checksum?: string
   transcription_status: TranscriptionStatus
   transcription_text?: string
   transcription_confidence?: number
@@ -157,28 +181,23 @@ export interface AIAnalysis {
   source_file_name: string
   source_file_type: FileType
   extracted_text?: string
-  status: AnalysisStatus
   analysis_status: AnalysisStatus
-  structured_data?: {
-    subjective?: string
-    objective?: string
-    assessment?: string
-    plan?: string
-  }
+  status?: AnalysisStatus // For backward compatibility if needed
   generated_subjective?: string
   generated_objective?: string
   generated_assessment?: string
   generated_plan?: string
   generated_medications?: Medication[]
   confidence_score?: number
-  entities?: MedicalEntity[]
   key_entities?: MedicalEntity[]
   comparison_data?: ComparisonData
   analysis_timestamp?: string
   reviewed_at?: string
   approved_at?: string
+  approved_by?: string
   notes?: string
 }
+
 
 export interface MedicalEntity {
   entity: string

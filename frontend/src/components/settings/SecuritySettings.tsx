@@ -3,6 +3,27 @@ import { useMutation } from '@tanstack/react-query';
 import { authApi } from '@/api/auth';
 import toast from 'react-hot-toast';
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 14px',
+  border: '1.5px solid var(--border)',
+  borderRadius: 8,
+  background: 'var(--surface)',
+  color: 'var(--text-1)',
+  fontSize: 13.5,
+  outline: 'none',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+  fontFamily: 'inherit',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 12.5,
+  fontWeight: 600,
+  color: 'var(--text-2)',
+  marginBottom: 5,
+};
+
 const SecuritySettings: React.FC = () => {
   const [pwForm, setPwForm] = useState({
     current_password: '',
@@ -28,49 +49,90 @@ const SecuritySettings: React.FC = () => {
     mutation.mutate(pwForm);
   };
 
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.style.borderColor = 'var(--teal)';
+    e.target.style.boxShadow = '0 0 0 3px var(--teal-glow)';
+  };
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.style.borderColor = 'var(--border)';
+    e.target.style.boxShadow = 'none';
+  };
+
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Security Settings</h3>
-        <p className="text-sm text-gray-500">Manage your password and account security.</p>
+        <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>
+          Security Settings
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
+          Manage your password and account security.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-md space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        style={{ maxWidth: 440, display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+          <label style={labelStyle}>Current Password</label>
           <input
             type="password"
             required
             value={pwForm.current_password}
             onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+            style={inputStyle}
+            className="form-control"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
           />
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+          <label style={labelStyle}>New Password</label>
           <input
             type="password"
             required
             value={pwForm.new_password}
             onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+            style={inputStyle}
+            className="form-control"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
           />
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+          <label style={labelStyle}>Confirm New Password</label>
           <input
             type="password"
             required
             value={pwForm.confirm_password}
             onChange={(e) => setPwForm({ ...pwForm, confirm_password: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+            style={inputStyle}
+            className="form-control"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
           />
         </div>
-        
+
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="bg-[#0d6e6e] hover:bg-[#0a5060] text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+          style={{
+            background: 'var(--grad-teal)',
+            border: 'none',
+            color: '#fff',
+            padding: '9px 24px',
+            borderRadius: 8,
+            fontWeight: 500,
+            fontSize: 13.5,
+            cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+            opacity: mutation.isPending ? 0.6 : 1,
+            transition: 'all 0.15s',
+            fontFamily: 'inherit',
+            boxShadow: 'var(--shadow-teal)',
+            alignSelf: 'flex-start',
+          }}
         >
           {mutation.isPending ? 'Updating...' : 'Update Password'}
         </button>

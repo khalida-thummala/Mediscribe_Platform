@@ -152,7 +152,7 @@ export default function ConsultationList() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Patient', 'Type', 'Chief Complaint', 'Status', 'Created', 'Actions'].map((h) => (
+                  {['Patient', 'Type', 'Chief Complaint', 'Status', 'Duration', 'Conf.', 'Created', 'Actions'].map((h) => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -190,7 +190,7 @@ export default function ConsultationList() {
                       </td>
                       <td>
                         <span style={{
-                          maxWidth: 200, display: 'block', overflow: 'hidden',
+                          maxWidth: 160, display: 'block', overflow: 'hidden',
                           textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13,
                           color: 'var(--text-2)',
                         }}>
@@ -207,9 +207,23 @@ export default function ConsultationList() {
                           {st.label}
                         </span>
                       </td>
+                      <td style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                        {c.duration_minutes ? `${c.duration_minutes}m` : (c.audio_duration_seconds ? `${Math.ceil(c.audio_duration_seconds / 60)}m` : '—')}
+                      </td>
+                      <td style={{ fontSize: 13 }}>
+                        {c.transcription_confidence ? (
+                          <span style={{ 
+                            color: c.transcription_confidence > 0.8 ? '#059669' : '#d97706',
+                            fontWeight: 600 
+                          }}>
+                            {(c.transcription_confidence * 100).toFixed(0)}%
+                          </span>
+                        ) : '—'}
+                      </td>
                       <td style={{ fontSize: 12, color: 'var(--text-3)' }}>
                         {c.created_at ? format(new Date(c.created_at), 'MMM d, h:mm a') : '—'}
                       </td>
+
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                           {/* Start/Resume Button for anything not completed */}
@@ -267,7 +281,7 @@ export default function ConsultationList() {
                           {c.status === 'completed' && (
                             <div style={{ display: 'flex', gap: 5 }}>
                               <button
-                                onClick={() => window.location.href = `/consultations/${c.consultation_id}/soap`}
+                                onClick={() => window.location.href = `/app/consultations/${c.consultation_id}/soap`}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: 5,
                                   padding: '6px 14px', borderRadius: 8, cursor: 'pointer',

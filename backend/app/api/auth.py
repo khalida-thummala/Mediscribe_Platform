@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session
 from app.db.deps import get_db
-from app.schemas.user import UserCreate, UserLogin, User as UserSchema
+from app.schemas.user import UserCreate, UserLogin, User as UserSchema, ForgotPasswordRequest, ResetPasswordRequest
 from app.services.auth_service import AuthService
 from app.core.deps import get_current_user
 from app.models.user import User
@@ -138,4 +138,24 @@ class OTPVerify(BaseModel):
 @router.post("/verify-otp")
 def verify_otp(data: OTPVerify, db: Session = Depends(get_db)):
     return AuthService.verify_otp(db, data.user_id, data.otp)
+
+
+# ── Forgot / Reset Password ──────────────────────────────────────────────────
+
+@router.post("/forgot-password")
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Request a password reset link.
+    Always returns 200 to prevent email enumeration.
+    In development the token is returned in the response body (dev_token).
+    """
+    return AuthService.forgot_password(db, data.email)
+
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Consume a reset token and set a new password.
+    """
+    return AuthService.reset_password(db, data.token, data.new_password)
 
