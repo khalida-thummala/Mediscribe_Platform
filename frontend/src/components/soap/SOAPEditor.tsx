@@ -13,7 +13,15 @@ interface Props {
 
 export default function SOAPEditor({ consultationId }: Props) {
   const qc = useQueryClient()
-  const [fields, setFields] = useState({ subjective: '', objective: '', assessment: '', plan: '' })
+  const [fields, setFields] = useState({ 
+    subjective: '', 
+    objective: '', 
+    assessment: '', 
+    plan: '',
+    medications: [] as any[],
+    follow_up_needed: false,
+    follow_up_days: 0
+  })
   const [synced, setSynced] = useState(false)
   const [reportStatus, setReportStatus] = useState<string>('draft')
   const [isAutoSaving, setIsAutoSaving] = useState(false)
@@ -23,10 +31,8 @@ export default function SOAPEditor({ consultationId }: Props) {
     queryKey: ['report', consultationId],
     queryFn: async () => {
       try {
-        // Try consultation-based fetch first
         return await consultationsApi.getReport(consultationId)
       } catch (e) {
-        // If that fails, it might be a direct report ID (e.g. from AI Analysis)
         return await apiClient.get(`/reports/${consultationId}`).then(r => r.data)
       }
     },
@@ -37,6 +43,9 @@ export default function SOAPEditor({ consultationId }: Props) {
           objective: formatSoapField(data.objective),
           assessment: formatSoapField(data.assessment),
           plan: formatSoapField(data.plan),
+          medications: data.medications || [],
+          follow_up_needed: !!data.follow_up_needed,
+          follow_up_days: data.follow_up_days || 0
         }
         setFields(loaded)
         lastSavedFields.current = JSON.stringify(loaded)
@@ -55,6 +64,9 @@ export default function SOAPEditor({ consultationId }: Props) {
       objective: formatSoapField(data.objective),
       assessment: formatSoapField(data.assessment),
       plan: formatSoapField(data.plan),
+      medications: data.medications || [],
+      follow_up_needed: !!data.follow_up_needed,
+      follow_up_days: data.follow_up_days || 0
     }
 
     setFields(loaded)
@@ -66,9 +78,9 @@ export default function SOAPEditor({ consultationId }: Props) {
   const saveMut = useMutation({
     mutationFn: async () => {
       try {
-        return await consultationsApi.updateReport(consultationId, fields)
+        return await consultationsApi.updateReport(consultationId, fields as any)
       } catch (e) {
-        return await reportsApi.update(consultationId, fields)
+        return await reportsApi.update(consultationId, fields as any)
       }
     },
     onSuccess: () => {
@@ -102,6 +114,9 @@ export default function SOAPEditor({ consultationId }: Props) {
           objective: formatSoapField(data.objective),
           assessment: formatSoapField(data.assessment),
           plan: formatSoapField(data.plan),
+          medications: data.medications || [],
+          follow_up_needed: !!data.follow_up_needed,
+          follow_up_days: data.follow_up_days || 0
         }
         setFields(generated)
         lastSavedFields.current = JSON.stringify(generated)
@@ -115,63 +130,52 @@ export default function SOAPEditor({ consultationId }: Props) {
     onError: () => toast.error('SOAP generation failed'),
   })
 
-  const approveMut = useMutation({
-    mutationFn: async () => {
-      try {
-        return await consultationsApi.approveReport(consultationId, fields as any)
-      } catch (e) {
-        return await reportsApi.approve(consultationId)
+  const exportMut = useMutation({
+    mutationFn: (format: string) => reportsApi.export(consultationId, { format } as any),
+    onSuccess: (data: any) => {
+      if (data && data.download_url) {
+        window.open(data.download_url, '_blank')
+        toast.success('Report exported successfully')
+      } else {
+        toast.error('Export failed: No URL returned')
       }
     },
-    onSuccess: (data: any) => {
-      lastSavedFields.current = JSON.stringify(fields)
-      setReportStatus(data?.status || 'approved')
-      setIsAutoSaving(false)
+    onError: () => toast.error('Export failed'),
+  })
+
+  const approveMut = useMutation({
+    mutationFn: () => reportsApi.approve(consultationId),
+    onSuccess: () => {
+      setReportStatus('approved')
       qc.invalidateQueries({ queryKey: ['reports'] })
       qc.invalidateQueries({ queryKey: ['report', consultationId] })
       qc.invalidateQueries({ queryKey: ['consultations'] })
-      toast.success('Report approved and locked')
+      toast.success('SOAP note approved and finalized')
     },
-    onError: (e: any) => toast.error(e.response?.data?.detail || 'Failed to approve report'),
+    onError: () => toast.error('Approval failed'),
   })
 
-  const exportMut = useMutation({
-    mutationFn: async (fmt: 'pdf' | 'docx' = 'pdf') => {
-      // First get the report_id for this consultation
-      const reportRes = await apiClient.get(`/consultations/${consultationId}/report`)
-      const reportId = reportRes.data?.report_id
-      if (!reportId) throw new Error('No report found for this consultation')
+  const addMedication = () => {
+    setFields(f => ({
+      ...f,
+      medications: [...f.medications, { name: '', dosage: '', frequency: '', duration: '', route: '', interaction_status: 'safe' }]
+    }))
+  }
 
-      const apiBase = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
-      const token = (await import('@/store/authStore')).useAuthStore.getState().accessToken
+  const updateMedication = (index: number, field: string, value: string) => {
+    setFields(f => {
+      const newMeds = [...f.medications]
+      newMeds[index] = { ...newMeds[index], [field]: value }
+      return { ...f, medications: newMeds }
+    })
+  }
 
-      const res = await fetch(`${apiBase}/reports/${reportId}/export`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ format: fmt }),
-      })
-
-      if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(errText || `Export failed (${res.status})`)
-      }
-
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `SOAP_Report_${consultationId.slice(0, 8)}.${fmt}`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    },
-    onSuccess: () => toast.success('Report exported successfully'),
-    onError: (e: any) => toast.error(e?.message || 'Export failed'),
-  })
+  const removeMedication = (index: number) => {
+    setFields(f => ({
+      ...f,
+      medications: f.medications.filter((_, i) => i !== index)
+    }))
+  }
 
   const SECTIONS = [
     { key: 'subjective', label: 'S — Subjective', color: '#5a3fad', placeholder: "Patient's chief complaint, history, and symptoms…" },
@@ -183,7 +187,7 @@ export default function SOAPEditor({ consultationId }: Props) {
   if (reportLoading) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}><Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} /></div>
 
   return (
-    <div>
+    <div style={{ maxHeight: '75vh', overflowY: 'auto', paddingRight: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         {reportStatus === 'approved' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#059669', marginRight: 14, fontWeight: 700 }}>
@@ -220,11 +224,11 @@ export default function SOAPEditor({ consultationId }: Props) {
           <div key={key}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
             <textarea
-              value={fields[key as keyof typeof fields]}
+              value={fields[key as keyof typeof fields] as string}
               onChange={(e) => setFields((f) => ({ ...f, [key]: e.target.value }))}
               placeholder={placeholder}
               className="form-control"
-              rows={5}
+              rows={4}
               style={{ 
                 resize: 'vertical', 
                 fontFamily: 'inherit', 
@@ -236,7 +240,63 @@ export default function SOAPEditor({ consultationId }: Props) {
             />
           </div>
         ))}
+
+        {/* Medications Section */}
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Medications</label>
+            {reportStatus !== 'approved' && (
+              <button onClick={addMedication} className="btn btn-sm btn-outline" style={{ padding: '4px 10px', fontSize: 11 }}>+ Add Med</button>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {fields.medications.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--text-4)', fontStyle: 'italic', padding: '10px', border: '1px dashed var(--border)', borderRadius: 8, textAlign: 'center' }}>No medications prescribed</div>
+            ) : (
+              fields.medications.map((med, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 0.5fr', gap: 8, background: 'var(--surface-hover)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <input placeholder="Name" value={med.name} onChange={e => updateMedication(i, 'name', e.target.value)} disabled={reportStatus === 'approved'} className="form-control" style={{ marginBottom: 0, height: 32, fontSize: 12 }} />
+                  <input placeholder="Dosage" value={med.dosage} onChange={e => updateMedication(i, 'dosage', e.target.value)} disabled={reportStatus === 'approved'} className="form-control" style={{ marginBottom: 0, height: 32, fontSize: 12 }} />
+                  <input placeholder="Freq" value={med.frequency} onChange={e => updateMedication(i, 'frequency', e.target.value)} disabled={reportStatus === 'approved'} className="form-control" style={{ marginBottom: 0, height: 32, fontSize: 12 }} />
+                  <input placeholder="Dur" value={med.duration} onChange={e => updateMedication(i, 'duration', e.target.value)} disabled={reportStatus === 'approved'} className="form-control" style={{ marginBottom: 0, height: 32, fontSize: 12 }} />
+                  {reportStatus !== 'approved' && (
+                    <button onClick={() => removeMedication(i)} style={{ border: 'none', background: 'transparent', color: '#e74c3c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Follow-up Section */}
+        <div style={{ marginTop: 10, padding: 14, background: 'var(--surface-hover)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input 
+              type="checkbox" 
+              id="follow_up_needed" 
+              checked={fields.follow_up_needed} 
+              onChange={e => setFields(f => ({ ...f, follow_up_needed: e.target.checked }))} 
+              disabled={reportStatus === 'approved'}
+            />
+            <label htmlFor="follow_up_needed" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)' }}>Follow-up needed</label>
+          </div>
+          {fields.follow_up_needed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-3)' }}>In</label>
+              <input 
+                type="number" 
+                value={fields.follow_up_days} 
+                onChange={e => setFields(f => ({ ...f, follow_up_days: parseInt(e.target.value) || 0 }))} 
+                disabled={reportStatus === 'approved'}
+                className="form-control" 
+                style={{ width: 60, marginBottom: 0, height: 32, fontSize: 12 }} 
+              />
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>days</span>
+            </div>
+          )}
+        </div>
       </div>
+
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
         <button

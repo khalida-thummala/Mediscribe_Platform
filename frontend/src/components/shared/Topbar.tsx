@@ -6,14 +6,14 @@ import { Bell, Search, Sun, Moon, ArrowLeft, Menu } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const PAGE_META: Record<string, { title: string; emoji: string }> = {
-  '/dashboard':    { title: 'Dashboard',        emoji: '⊞' },
-  '/patients':     { title: 'Patients',          emoji: '👥' },
-  '/consultations':{ title: 'Consultations',     emoji: '🎙' },
-  '/ai-analysis':  { title: 'AI Report Analysis',emoji: '✦' },
-  '/reports':      { title: 'SOAP Reports',       emoji: '📄' },
-  '/analytics':    { title: 'Analytics',          emoji: '📊' },
-  '/audit':        { title: 'Audit Trail',        emoji: '🛡' },
-  '/settings':     { title: 'Settings',           emoji: '⚙' },
+  '/app/dashboard':    { title: 'Dashboard',        emoji: '⊞' },
+  '/app/patients':     { title: 'Patients',          emoji: '👥' },
+  '/app/consultations':{ title: 'Consultations',     emoji: '🎙' },
+  '/app/ai-analysis':  { title: 'AI Report Analysis',emoji: '✦' },
+  '/app/reports':      { title: 'SOAP Reports',       emoji: '📄' },
+  '/app/analytics':    { title: 'Analytics',          emoji: '📊' },
+  '/app/audit':        { title: 'Audit Trail',        emoji: '🛡' },
+  '/app/settings':     { title: 'Settings',           emoji: '⚙' },
 }
 
 export default function Topbar() {
@@ -54,7 +54,7 @@ export default function Topbar() {
 
       {/* Back Button & Page Title */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden' }}>
-        {pathname !== '/dashboard' && (
+        {pathname !== '/app/dashboard' && (
           <button
             onClick={() => window.history.back()}
             style={{
@@ -156,7 +156,7 @@ export default function Topbar() {
 
       {/* User Avatar */}
       <div
-        onClick={() => navigate('/settings')}
+        onClick={() => navigate('/app/settings')}
         title="Profile & Settings"
         style={{
           width: 34, height: 34, borderRadius: 10, cursor: 'pointer', flexShrink: 0,

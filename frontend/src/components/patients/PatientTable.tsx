@@ -257,7 +257,7 @@ export default function PatientTable() {
         open={showForm}
         onClose={() => setShowForm(false)}
         title={editing ? 'Edit Patient Record' : 'Register New Patient'}
-        width={580}
+        width={850}
       >
         <PatientForm
           initial={editing}

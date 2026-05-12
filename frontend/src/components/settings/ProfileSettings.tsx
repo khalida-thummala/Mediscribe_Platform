@@ -5,18 +5,45 @@ import { useAuthStore } from '@/store/authStore';
 import { LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 14px',
+  border: '1.5px solid var(--border)',
+  borderRadius: 8,
+  background: 'var(--surface)',
+  color: 'var(--text-1)',
+  fontSize: 13.5,
+  outline: 'none',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+  fontFamily: 'inherit',
+};
+
+const disabledInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  background: 'var(--surface-2)',
+  color: 'var(--text-3)',
+  cursor: 'not-allowed',
+  border: '1.5px solid var(--border)',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 12.5,
+  fontWeight: 600,
+  color: 'var(--text-2)',
+  marginBottom: 5,
+};
+
 const ProfileSettings: React.FC = () => {
   const { user, setAuth, accessToken, refreshToken, logout } = useAuthStore();
   const qc = useQueryClient();
 
-  // Always fetch fresh profile from backend on mount
   const { data: profile } = useQuery({
     queryKey: ['me'],
     queryFn: () => authApi.getProfile(),
     staleTime: 0,
   });
 
-  // Merge stored user with fresh profile — fresh profile wins
   const effectiveUser = profile ?? user;
 
   const [formData, setFormData] = useState({
@@ -26,7 +53,6 @@ const ProfileSettings: React.FC = () => {
     language_preference: 'en',
   });
 
-  // Populate form once profile is loaded
   useEffect(() => {
     if (effectiveUser) {
       setFormData({
@@ -42,7 +68,6 @@ const ProfileSettings: React.FC = () => {
     mutationFn: (data: any) => authApi.updateProfile(data),
     onSuccess: async (updated) => {
       toast.success('Profile updated successfully');
-      // Refresh the full profile in the store
       setAuth(updated, accessToken!, refreshToken!);
       qc.invalidateQueries({ queryKey: ['me'] });
     },
@@ -64,26 +89,39 @@ const ProfileSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Profile Information</h3>
-        <p className="text-sm text-gray-500">Update your personal details and preferences.</p>
+        <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>
+          Profile Information
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
+          Update your personal details and preferences.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }} className="profile-form-grid">
         {/* Full Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <label style={labelStyle}>Full Name</label>
           <input
             value={formData.full_name}
             onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+            style={inputStyle}
+            className="form-control"
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--teal)';
+              e.target.style.boxShadow = '0 0 0 3px var(--teal-glow)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.boxShadow = 'none';
+            }}
           />
         </div>
 
-        {/* Phone Number — pre-filled from registration */}
+        {/* Phone Number */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+          <label style={labelStyle}>Phone Number</label>
           <input
             type="text"
             inputMode="numeric"
@@ -94,38 +132,60 @@ const ProfileSettings: React.FC = () => {
               setFormData((prev) => ({ ...prev, phone: val }));
             }}
             placeholder="9876543210"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+            style={inputStyle}
+            className="form-control"
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--teal)';
+              e.target.style.boxShadow = '0 0 0 3px var(--teal-glow)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.boxShadow = 'none';
+            }}
           />
-          <p className="text-[10px] text-gray-500 mt-1">Please enter exactly 10 digits (Numbers only)</p>
+          <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 4 }}>
+            Please enter exactly 10 digits (Numbers only)
+          </p>
         </div>
 
         {/* Email — read-only */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email (Read-only)</label>
+          <label style={labelStyle}>Email (Read-only)</label>
           <input
             value={(effectiveUser as any)?.email ?? ''}
             disabled
-            className="w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-500 cursor-not-allowed"
+            style={disabledInputStyle}
+            className="form-control"
           />
         </div>
 
-        {/* License No — read-only, pre-filled from registration */}
+        {/* License No — read-only */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">License No. (Read-only)</label>
+          <label style={labelStyle}>License No. (Read-only)</label>
           <input
             value={(effectiveUser as any)?.license_number ?? ''}
             disabled
-            className="w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-500 cursor-not-allowed"
+            style={disabledInputStyle}
+            className="form-control"
           />
         </div>
 
         {/* Timezone */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+          <label style={labelStyle}>Timezone</label>
           <select
             value={formData.timezone}
             onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+            style={inputStyle}
+            className="form-control"
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--teal)';
+              e.target.style.boxShadow = '0 0 0 3px var(--teal-glow)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.boxShadow = 'none';
+            }}
           >
             <option value="UTC">UTC</option>
             <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
@@ -137,11 +197,20 @@ const ProfileSettings: React.FC = () => {
 
         {/* Language */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+          <label style={labelStyle}>Language</label>
           <select
             value={formData.language_preference}
             onChange={(e) => setFormData({ ...formData, language_preference: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+            style={inputStyle}
+            className="form-control"
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--teal)';
+              e.target.style.boxShadow = '0 0 0 3px var(--teal-glow)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border)';
+              e.target.style.boxShadow = 'none';
+            }}
           >
             <option value="en">English</option>
             <option value="es">Spanish</option>
@@ -150,27 +219,77 @@ const ProfileSettings: React.FC = () => {
         </div>
 
         {/* Actions row */}
-        <div className="md:col-span-2 flex justify-between items-center pt-6 border-t border-gray-100">
-          {/* Sign Out — prominent button */}
+        <div style={{
+          gridColumn: '1 / -1',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: 20,
+          borderTop: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}>
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 font-medium text-sm transition-colors"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid var(--rose-light)',
+              background: 'var(--rose-light)',
+              color: 'var(--rose)',
+              fontWeight: 500,
+              fontSize: 13.5,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--rose)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#fff';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--rose-light)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--rose)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--rose-light)';
+            }}
           >
             <LogOut size={15} />
             Sign Out of Account
           </button>
 
-          {/* Save Changes */}
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="bg-[#0d6e6e] hover:bg-[#0a5060] text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+            style={{
+              background: 'var(--grad-teal)',
+              border: 'none',
+              color: '#fff',
+              padding: '8px 24px',
+              borderRadius: 8,
+              fontWeight: 500,
+              fontSize: 13.5,
+              cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+              opacity: mutation.isPending ? 0.6 : 1,
+              transition: 'all 0.15s',
+              fontFamily: 'inherit',
+              boxShadow: 'var(--shadow-teal)',
+            }}
           >
             {mutation.isPending ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>
+
+      <style>{`
+        @media (min-width: 768px) {
+          .profile-form-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

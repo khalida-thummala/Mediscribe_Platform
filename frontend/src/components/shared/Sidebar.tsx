@@ -14,29 +14,29 @@ const NAV_GROUPS = [
   {
     label: 'Main',
     items: [
-      { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard',     color: '#3b82f6' },
-      { to: '/patients',      icon: Users,            label: 'Patients',      color: '#10b981', badge: 'patients' },
-      { to: '/consultations', icon: Stethoscope,      label: 'Consultations', color: '#f59e0b' },
+      { to: '/app/dashboard',     icon: LayoutDashboard, label: 'Dashboard',     color: '#3b82f6' },
+      { to: '/app/patients',      icon: Users,            label: 'Patients',      color: '#10b981', badge: 'patients' },
+      { to: '/app/consultations', icon: Stethoscope,      label: 'Consultations', color: '#f59e0b' },
     ],
   },
   {
     label: 'Clinical',
     items: [
-      { to: '/ai-analysis', icon: BrainCircuit, label: 'AI Analysis', color: '#7c3aed', tag: 'New' },
-      { to: '/reports',     icon: FileText,     label: 'Reports',     color: '#0d9488' },
+      { to: '/app/ai-analysis', icon: BrainCircuit, label: 'AI Analysis', color: '#7c3aed', tag: 'New' },
+      { to: '/app/reports',     icon: FileText,     label: 'Reports',     color: '#0d9488' },
     ],
   },
   {
     label: 'Insights',
     items: [
-      { to: '/analytics', icon: BarChart3,   label: 'Analytics',    color: '#f59e0b' },
-      { to: '/audit',     icon: ShieldCheck, label: 'Audit Trail',  color: '#6b7280' },
+      { to: '/app/analytics', icon: BarChart3,   label: 'Analytics',    color: '#f59e0b' },
+      { to: '/app/audit',     icon: ShieldCheck, label: 'Audit Trail',  color: '#6b7280' },
     ],
   },
   {
     label: 'Account',
     items: [
-      { to: '/settings', icon: Settings, label: 'Settings', color: '#6b7280' },
+      { to: '/app/settings', icon: Settings, label: 'Settings', color: '#6b7280' },
     ],
   },
 ]
@@ -201,7 +201,7 @@ export default function Sidebar() {
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <div
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate('/app/settings')}
             style={{
               width: 32, height: 32, borderRadius: 8, flexShrink: 0,
               background: 'var(--grad-teal)',
@@ -213,7 +213,7 @@ export default function Sidebar() {
             {user ? getInitials(user.full_name) : 'DR'}
           </div>
 
-          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate('/settings')}>
+          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate('/app/settings')}>
             <div style={{
               fontWeight: 600, fontSize: 12, color: 'var(--text-1)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
