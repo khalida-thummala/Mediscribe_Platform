@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
-import { CheckCircle, Loader2, FileText, Activity, CheckCircle2 } from 'lucide-react'
+import { CheckCircle, Loader2, FileText, Activity, CheckCircle2, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ComparisonPanel from './ComparisonPanel'
 import { formatSoapField } from '@/utils'

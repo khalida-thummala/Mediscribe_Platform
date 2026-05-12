@@ -130,6 +130,31 @@ export default function SOAPEditor({ consultationId }: Props) {
     onError: () => toast.error('SOAP generation failed'),
   })
 
+  const exportMut = useMutation({
+    mutationFn: (format: string) => reportsApi.export(consultationId, { format } as any),
+    onSuccess: (data: any) => {
+      if (data && data.download_url) {
+        window.open(data.download_url, '_blank')
+        toast.success('Report exported successfully')
+      } else {
+        toast.error('Export failed: No URL returned')
+      }
+    },
+    onError: () => toast.error('Export failed'),
+  })
+
+  const approveMut = useMutation({
+    mutationFn: () => reportsApi.approve(consultationId),
+    onSuccess: () => {
+      setReportStatus('approved')
+      qc.invalidateQueries({ queryKey: ['reports'] })
+      qc.invalidateQueries({ queryKey: ['report', consultationId] })
+      qc.invalidateQueries({ queryKey: ['consultations'] })
+      toast.success('SOAP note approved and finalized')
+    },
+    onError: () => toast.error('Approval failed'),
+  })
+
   const addMedication = () => {
     setFields(f => ({
       ...f,
