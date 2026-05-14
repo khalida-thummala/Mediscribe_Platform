@@ -84,32 +84,31 @@ export default function ReportList({ search = '' }: Props) {
   return (
     <div>
       {/* Mini Stats */}
-      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Reports',    value: allReports.length, color: '#7c3aed', bg: '#f5f3ff', icon: FileText },
-          { label: 'Approved / Signed',value: approvedCount,     color: '#059669', bg: '#ecfdf5', icon: CheckCircle2 },
-          { label: 'Drafts Pending',   value: draftCount,        color: '#d97706', bg: '#fffbeb', icon: Clock },
+          { label: 'Total Reports',    value: allReports.length, color: '#7c3aed', icon: FileText },
+          { label: 'Approved / Signed',value: approvedCount,     color: '#059669', icon: CheckCircle2 },
+          { label: 'Drafts Pending',   value: draftCount,        color: '#d97706', icon: Clock },
         ].map((s) => {
           const Icon = s.icon
           return (
-            <div key={s.label} style={{
-              background: 'var(--surface)', border: '1px solid var(--border)',
-              borderRadius: 12, padding: '14px 20px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              boxShadow: 'var(--shadow-xs)',
-            }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 10, background: s.bg,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `1px solid ${s.color}22`, flexShrink: 0,
-              }}>
-                <Icon size={18} color={s.color} />
-              </div>
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>
-                  {isLoading ? '—' : s.value}
+            <div 
+              key={s.label} 
+              className="stat-card-premium"
+              style={{ '--card-grad': `linear-gradient(90deg, ${s.color} 0%, ${s.color}88 100%)` } as any}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div className="icon-box-premium" style={{ color: s.color }}>
+                  <Icon size={18} />
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+                <div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                    {isLoading ? '—' : s.value}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {s.label}
+                  </div>
+                </div>
               </div>
             </div>
           )
