@@ -4,8 +4,7 @@ import { AuthLayout, LoginForm, RegisterForm, OTPVerification } from '@/componen
 import { useAuthStore } from '@/store/authStore'
 
 export default function LoginPage() {
-  const [tab, setTab] = useState<'login' | 'register' | 'verify'>('login')
-  const [pendingUserId, setPendingUserId] = useState<string | null>(null)
+  const [tab, setTab] = useState<'login' | 'register'>('login')
   const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
@@ -15,8 +14,7 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, navigate])
 
-  const handleRegisterSuccess = (_email: string, userId: string) => {
-    setPendingUserId(userId)
+  const handleRegisterSuccess = () => {
     setTab('login')
   }
 
@@ -34,9 +32,9 @@ export default function LoginPage() {
         {(['login', 'register'] as const).map((t) => (
           <button
             key={t}
-            onClick={() => { setTab(t); setPendingUserId(null) }}
+            onClick={() => { setTab(t) }}
             className={`flex-1 py-3 text-sm font-semibold transition-all duration-200 border-b-2 ${
-              tab === t || (tab === 'verify' && t === 'register')
+              tab === t
                 ? 'border-[#0d6e6e] text-[#0d6e6e]'
                 : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}
@@ -54,15 +52,6 @@ export default function LoginPage() {
         <div className="max-h-[70vh] overflow-y-auto pr-1 -mr-1">
           <RegisterForm onSuccess={handleRegisterSuccess} />
         </div>
-      )}
-
-      {/* OTP verification */}
-      {tab === 'verify' && pendingUserId && (
-        <OTPVerification
-          userId={pendingUserId}
-          onSuccess={() => setTab('login')}
-          onBack={() => setTab('register')}
-        />
       )}
 
       <div className="mt-6 text-center">

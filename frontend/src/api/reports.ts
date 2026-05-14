@@ -9,7 +9,7 @@ export const reportsApi = {
     apiClient.get(`/reports/${id}`).then((r) => r.data),
 
   export: (id: string, options: ExportOptions) =>
-    apiClient.post<ExportResult>(`/reports/${id}/export`, options).then((r) => r.data),
+    apiClient.post(`/reports/${id}/export`, options, { responseType: 'blob' }).then((r) => r.data),
 
   update: (id: string, data: any) =>
     apiClient.put(`/reports/${id}`, data).then((r) => r.data),

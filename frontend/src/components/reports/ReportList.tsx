@@ -62,22 +62,9 @@ export default function ReportList({ search = '' }: Props) {
 
   const handleExport = async (reportId: string, fmt: 'pdf' | 'docx') => {
     try {
-      const apiBase = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
-      const res = await fetch(`${apiBase}/reports/${reportId}/export`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({ format: fmt }),
-      })
+      const blob = await reportsApi.export(reportId, { format: fmt })
+      if (!blob) throw new Error('Empty file received')
 
-      if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(errText || `Export failed (${res.status})`)
-      }
-
-      const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -89,7 +76,7 @@ export default function ReportList({ search = '' }: Props) {
 
       toast.success(`Report downloaded as ${fmt.toUpperCase()}`)
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to export report')
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to export report')
     }
   }
 

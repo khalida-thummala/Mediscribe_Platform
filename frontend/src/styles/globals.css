@@ -80,49 +80,49 @@
      DARK MODE THEME
   ════════════════════════════════════════ */
   [data-theme="dark"] {
-    /* Backgrounds */
-    --bg:            #0d1117;
-    --bg-2:          #111827;
-    --surface:       #161b22;
-    --surface-2:     #1c2333;
-    --surface-hover: #21262d;
-    --surface-active:#1f2d3d;
+    /* Backgrounds — Even deeper for "Midnight" feel */
+    --bg:            #040507;
+    --bg-2:          #06080a;
+    --surface:       #080a0e;
+    --surface-2:     #0c1016;
+    --surface-hover: #121822;
+    --surface-active:#0f141d;
 
-    /* Borders */
-    --border:        #30363d;
-    --border-2:      #484f58;
-    --border-focus:  #0d9488;
+    /* Borders — Subtler but higher contrast against deep backgrounds */
+    --border:        #151b27;
+    --border-2:      #1d2433;
+    --border-focus:  #10b981;
 
-    /* Text */
-    --text-1:        #f0f6fc;
-    --text-2:        #c9d1d9;
-    --text-3:        #8b949e;
-    --text-4:        #484f58;
+    /* Text — Brighter whites for readability */
+    --text-1:        #ffffff;
+    --text-2:        #f1f5f9;
+    --text-3:        #94a3b8;
+    --text-4:        #475569;
 
-    /* Brand — same teal, slightly brighter */
-    --teal:          #14b8a6;
-    --teal-dark:     #0d9488;
-    --teal-darker:   #0f766e;
-    --teal-light:    rgba(13,148,136,0.12);
-    --teal-mid:      #2dd4bf;
-    --teal-glow:     rgba(20,184,166,0.2);
+    /* Brand — Deeper Emerald Green for a premium look */
+    --teal:          #10b981;
+    --teal-dark:     #065f46;
+    --teal-darker:   #064e3b;
+    --teal-light:    rgba(16,185,129,0.12);
+    --teal-mid:      #34d399;
+    --teal-glow:     rgba(16,185,129,0.25);
 
-    /* Accent — same hues, keep vivid */
+    /* Accent — keep vivid but adjusted for deep dark */
     --blue-light:    rgba(59,130,246,0.12);
     --violet-light:  rgba(124,58,237,0.12);
     --amber-light:   rgba(245,158,11,0.12);
     --rose-light:    rgba(244,63,94,0.12);
     --emerald-light: rgba(16,185,129,0.12);
 
-    /* Shadows — deeper in dark mode */
-    --shadow-xs:     0 1px 2px rgba(0,0,0,0.3);
-    --shadow-sm:     0 1px 6px rgba(0,0,0,0.4), 0 2px 12px rgba(0,0,0,0.2);
-    --shadow:        0 2px 12px rgba(0,0,0,0.5), 0 6px 24px rgba(0,0,0,0.3);
-    --shadow-lg:     0 8px 40px rgba(0,0,0,0.6), 0 2px 10px rgba(0,0,0,0.4);
-    --shadow-teal:   0 4px 24px rgba(20,184,166,0.3);
+    /* Shadows — even deeper for depth */
+    --shadow-xs:     0 1px 2px rgba(0,0,0,0.5);
+    --shadow-sm:     0 2px 8px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.3);
+    --shadow:        0 4px 20px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.4);
+    --shadow-lg:     0 12px 48px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.5);
+    --shadow-teal:   0 8px 32px rgba(16,185,129,0.2);
 
     /* Compat alias */
-    --text:          #f0f6fc;
+    --text:          #ffffff;
 
     /* ── Color scheme (tells browser to render native controls in dark mode) ── */
     color-scheme: dark;

@@ -333,3 +333,27 @@ class AuthService:
 
         return {"message": "Password updated successfully. You can now sign in."}
 
+    @staticmethod
+    def reset_password_by_email(db: Session, email: str, new_password: str) -> dict:
+        """
+        Simplified password reset for development (bypasses token check).
+        """
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        user.password_hash = hash_password(new_password)
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
+
+        audit_service.log_event(
+            db,
+            action="password_reset_simplified",
+            user_id=user.user_id,
+            organization_id=user.organization_id,
+            details={"email": user.email},
+        )
+
+        return {"message": "Password updated successfully. You can now sign in."}
+

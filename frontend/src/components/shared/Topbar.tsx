@@ -160,9 +160,9 @@ export default function Topbar() {
         title="Profile & Settings"
         style={{
           width: 34, height: 34, borderRadius: 10, cursor: 'pointer', flexShrink: 0,
-          background: 'linear-gradient(135deg, #0d9488, #14b8a6)',
+          background: 'var(--grad-teal)',
           color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12.5, fontWeight: 700, boxShadow: '0 2px 8px rgba(13,148,136,0.3)',
+          fontSize: 12.5, fontWeight: 700, boxShadow: 'var(--shadow-teal)',
           transition: 'transform 0.15s',
         }}
         onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}

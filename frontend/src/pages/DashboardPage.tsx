@@ -64,10 +64,10 @@ export default function DashboardPage() {
     <div className="fade-in">
       {/* ── Welcome Banner ──────────────────────── */}
       <div className="stack-on-mobile" style={{
-        background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #0d9488 100%)',
+        background: 'linear-gradient(135deg, var(--teal-dark) 0%, var(--teal) 50%, var(--teal-dark) 100%)',
         borderRadius: 16, padding: '24px 28px', marginBottom: 24,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 8px 32px rgba(13,148,136,0.25)',
+        boxShadow: 'var(--shadow-teal)',
         position: 'relative', overflow: 'hidden',
         gap: 20
       }}>
@@ -124,15 +124,18 @@ export default function DashboardPage() {
             <div key={s.label} className="stat-card" style={{ padding: '20px 22px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div style={{
-                  width: 42, height: 42, borderRadius: 12, background: s.bg,
+                  width: 42, height: 42, borderRadius: 12, 
+                  background: `color-mix(in srgb, ${s.color}, transparent 88%)`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `1px solid ${s.color}22`,
+                  border: `1px solid color-mix(in srgb, ${s.color}, transparent 80%)`,
                 }}>
                   <Icon size={20} color={s.color} />
                 </div>
                 <span style={{
-                  fontSize: 11, fontWeight: 600, color: '#10b981',
-                  background: '#ecfdf5', border: '1px solid #a7f3d0',
+                  fontSize: 11, fontWeight: 600, 
+                  color: 'var(--emerald)',
+                  background: 'var(--emerald-light)', 
+                  border: '1px solid var(--emerald-light)',
                   padding: '2px 8px', borderRadius: 20, display: 'flex', alignItems: 'center', gap: 3,
                 }}>
                   <TrendingUp size={10} /> {s.trend}

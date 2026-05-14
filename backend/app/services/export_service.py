@@ -143,9 +143,10 @@ class ExportService:
             textColor=colors.HexColor("#6b7280"),
         )
 
-        timestamp = datetime.utcnow().strftime(
-            "%B %d, %Y at %H:%M UTC"
-        )
+        # Use approved_at if available, otherwise created_at
+        display_date = report.approved_at or report.created_at or datetime.utcnow()
+        timestamp = display_date.strftime("%B %d, %Y at %H:%M UTC")
+        date_label = "Approved" if report.approved_at else "Generated"
 
         patient_name = _clean(
             getattr(patient, "full_name", None)
@@ -202,7 +203,7 @@ class ExportService:
                 (report.status or "draft").capitalize()
             ],
             [
-                "Generated",
+                date_label,
                 timestamp
             ],
             [
@@ -432,9 +433,9 @@ class ExportService:
             section.left_margin = Cm(2.5)
             section.right_margin = Cm(2.5)
 
-        timestamp = datetime.utcnow().strftime(
-            "%B %d, %Y at %H:%M UTC"
-        )
+        # Use approved_at if available, otherwise created_at
+        display_date = report.approved_at or report.created_at or datetime.utcnow()
+        timestamp = display_date.strftime("%B %d, %Y at %H:%M UTC")
 
         patient_name = _clean(
             getattr(patient, "full_name", None)
