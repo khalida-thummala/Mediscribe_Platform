@@ -9,6 +9,7 @@ import {
   FileText, BarChart3, ShieldCheck, Settings, LogOut,
   Sparkles
 } from 'lucide-react'
+import Logo from './Logo'
 
 const NAV_GROUPS = [
   {
@@ -75,25 +76,7 @@ export default function Sidebar() {
     >
       {/* ── Brand ─────────────────────────────── */}
       <div style={{ padding: '24px 18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: 'var(--grad-teal)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'var(--shadow-teal)',
-            flexShrink: 0,
-          }}>
-            <Sparkles size={18} color="#fff" />
-          </div>
-          <div>
-            <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 19, color: 'var(--text-1)', lineHeight: 1.1 }}>
-              MediScribe
-            </div>
-            <div style={{ fontSize: 9, color: 'var(--text-4)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2, fontWeight: 700 }}>
-              Healthcare v2.0
-            </div>
-          </div>
-        </div>
+        <Logo />
       </div>
 
       {/* ── Navigation ────────────────────────── */}
