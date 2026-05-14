@@ -6,8 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { patientsApi } from '@/api/patients'
 import {
   LayoutDashboard, Users, Stethoscope, BrainCircuit,
-  FileText, BarChart3, ShieldCheck, Settings, LogOut,
-  Sparkles
+  FileText, BarChart3, ShieldCheck, Settings, LogOut
 } from 'lucide-react'
 import Logo from './Logo'
 

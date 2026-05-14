@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { ExportOptions, ExportResult } from '@/types'
+import type { ExportOptions } from '@/types'
 
 export const reportsApi = {
   list: (params = {}) =>

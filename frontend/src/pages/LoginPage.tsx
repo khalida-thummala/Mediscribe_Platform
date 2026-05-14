@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AuthLayout, LoginForm, RegisterForm, OTPVerification } from '@/components/auth'
+import { AuthLayout, LoginForm, RegisterForm } from '@/components/auth'
 import { useAuthStore } from '@/store/authStore'
 
 export default function LoginPage() {

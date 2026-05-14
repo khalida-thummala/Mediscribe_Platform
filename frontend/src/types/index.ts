@@ -217,8 +217,8 @@ export type ExportFormat = 'pdf' | 'docx'
 
 export interface ExportOptions {
   format: ExportFormat
-  include_signatures: boolean
-  include_metadata: boolean
+  include_signatures?: boolean
+  include_metadata?: boolean
   watermark?: string
   password?: string
 }

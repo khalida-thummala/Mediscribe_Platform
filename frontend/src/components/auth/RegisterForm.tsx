@@ -7,12 +7,7 @@ interface RegisterFormProps {
   onSuccess: (email: string, userId: string) => void
 }
 
-/* ── shared input style ─────────────────────────────────── */
-const inp =
-  'w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0d6e6e] focus:border-transparent outline-none transition-all bg-white text-gray-900'
-const sel =
-  'w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0d6e6e] focus:border-transparent outline-none transition-all bg-white text-gray-900 appearance-none'
-const lbl = 'block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide'
+/* ── Form Components ───────────────────────────────────── */
 
 const TIMEZONES = [
   { value: 'UTC',                  label: 'UTC (Coordinated Universal Time)' },

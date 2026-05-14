@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { patientsApi } from '@/api/patients'
-import { useAuthStore } from '@/store/authStore'
 import { FileText, Download, CheckCircle2, Clock, PenLine, Archive, Edit2, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -58,7 +57,6 @@ export default function ReportList({ search = '' }: Props) {
       })
     : allReports
 
-  const accessToken = useAuthStore((s) => s.accessToken)
 
   const handleExport = async (reportId: string, fmt: 'pdf' | 'docx') => {
     try {

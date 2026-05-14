@@ -5,14 +5,12 @@ interface LogoProps {
   showText?: boolean
   size?: 'sm' | 'md' | 'lg'
   className?: string
-  theme?: 'light' | 'dark'
 }
 
 const Logo: React.FC<LogoProps> = ({ 
   showText = true, 
   size = 'md', 
-  className = '',
-  theme = 'light' 
+  className = ''
 }) => {
   const sizes = {
     sm: { icon: 14, box: 30, text: 16, sub: 8 },

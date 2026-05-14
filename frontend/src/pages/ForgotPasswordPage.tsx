@@ -1,15 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Mail, CheckCircle } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { authApi } from '@/api/auth'
+import { ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '@/components/auth'
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
-  const [email,        setEmail]        = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [sent,         setSent]         = useState(false)
+  const [email, setEmail] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

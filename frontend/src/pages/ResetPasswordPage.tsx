@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Eye, EyeOff, ArrowLeft, CheckCircle, KeyRound } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authApi } from '@/api/auth'
 import { AuthLayout } from '@/components/auth'
