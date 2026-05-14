@@ -26,10 +26,10 @@ export default function ReportsPage() {
           <div className="desktop-only" style={{
             display: 'flex', alignItems: 'center', gap: 7,
             background: 'var(--teal-light)', border: '1px solid var(--teal-glow)',
-            borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--teal-dark)', fontWeight: 600,
-            whiteSpace: 'nowrap'
+            borderRadius: 10, padding: '8px 14px', fontSize: 12, color: 'var(--teal-dark)', fontWeight: 700,
+            whiteSpace: 'nowrap', boxShadow: '0 2px 10px var(--teal-glow-op)'
           }}>
-            <FileText size={13} />
+            <FileText size={14} />
             SOAP Standard
           </div>
         </div>

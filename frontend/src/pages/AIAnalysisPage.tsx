@@ -22,17 +22,20 @@ export default function AIAnalysisPage() {
 
       {/* ── Info Banner ────────────────────── */}
       <div style={{
-        background: 'linear-gradient(135deg, #7c3aed11 0%, #a855f711 100%)',
-        border: '1px solid #ddd6fe', borderRadius: 12,
-        padding: '14px 20px', marginBottom: 24,
-        display: 'flex', alignItems: 'flex-start', gap: 14,
+        background: 'var(--violet-light)',
+        border: '1px solid var(--border)', borderRadius: 16,
+        padding: '20px 24px', marginBottom: 24,
+        display: 'flex', alignItems: 'flex-start', gap: 16,
+        boxShadow: 'var(--shadow-sm)'
       }}>
-        <BrainCircuit size={20} color="#7c3aed" style={{ flexShrink: 0, marginTop: 1 }} />
+        <div className="icon-box-premium" style={{ color: 'var(--violet)' }}>
+          <BrainCircuit size={20} />
+        </div>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 13.5, color: '#5b21b6', marginBottom: 3 }}>
+          <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--violet)', marginBottom: 4 }}>
             How AI Analysis Works
           </div>
-          <div style={{ fontSize: 12.5, color: '#7c3aed', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.6, opacity: 0.9 }}>
             Upload a PDF, DOCX, or image of a medical report. Our AI extracts text, generates a structured SOAP note,
             and compares it against your existing consultation notes. Supports files up to 50 MB.
           </div>
@@ -42,25 +45,21 @@ export default function AIAnalysisPage() {
       {/* ── Main Content ───────────────────── */}
       <div className="grid-responsive" style={{
         display: 'grid',
-        gridTemplateColumns: analysisId ? '1fr 1fr' : '1fr',
+        gridTemplateColumns: analysisId ? '1.1fr 0.9fr' : '1fr',
         gap: 24,
         transition: 'grid-template-columns 0.3s ease',
       }}>
         {/* Upload Panel */}
         <div className="card">
-          <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, background: '#f5f3ff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '1px solid #ddd6fe',
-            }}>
-              <Upload size={15} color="#7c3aed" />
+          <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="icon-box-premium" style={{ color: 'var(--violet)' }}>
+              <Upload size={16} />
             </div>
             <div>
-              <h3 style={{ fontSize: 14, margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+              <h3 style={{ fontSize: 15, margin: 0, fontWeight: 700 }}>
                 Upload Document
               </h3>
-              <p style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 1 }}>PDF, DOCX, or image</p>
+              <p style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 2 }}>PDF, DOCX, or image</p>
             </div>
           </div>
           <div style={{ padding: 22 }}>
@@ -75,25 +74,21 @@ export default function AIAnalysisPage() {
               padding: '18px 22px 14px', borderBottom: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8, background: '#ecfdf5',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1px solid #a7f3d0',
-                }}>
-                  <BrainCircuit size={15} color="#059669" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="icon-box-premium" style={{ color: 'var(--emerald)' }}>
+                  <BrainCircuit size={16} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 14, margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+                  <h3 style={{ fontSize: 15, margin: 0, fontWeight: 700 }}>
                     Analysis Results
                   </h3>
-                  <p style={{ fontSize: 11.5, color: '#059669', marginTop: 1 }}>AI-generated SOAP note ready</p>
+                  <p style={{ fontSize: 11.5, color: 'var(--emerald)', marginTop: 2 }}>AI-generated SOAP note ready</p>
                 </div>
               </div>
               <button
                 onClick={() => setAnalysisId(null)}
                 className="btn btn-sm"
-                style={{ fontSize: 12 }}
+                style={{ fontSize: 12, padding: '4px 10px' }}
               >
                 ✕ Clear
               </button>

@@ -67,32 +67,31 @@ export default function PatientTable() {
       </div>
 
       {/* ── Stats ────────────────────────────── */}
-      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { icon: Users,     label: 'Total Patients', value: patients.length,  color: '#3b82f6', bg: '#eff6ff' },
-          { icon: UserCheck, label: 'Active',          value: activeCount,      color: '#10b981', bg: '#ecfdf5' },
-          { icon: UserX,     label: 'Inactive',        value: inactiveCount,    color: '#6b7280', bg: '#f3f4f6' },
+          { icon: Users,     label: 'Total Patients', value: patients.length,  color: '#3b82f6' },
+          { icon: UserCheck, label: 'Active',          value: activeCount,      color: '#10b981' },
+          { icon: UserX,     label: 'Inactive',        value: inactiveCount,    color: '#6b7280' },
         ].map((s) => {
           const Icon = s.icon
           return (
-            <div key={s.label} style={{
-              background: 'var(--surface)', border: '1px solid var(--border)',
-              borderRadius: 12, padding: '14px 20px',
-              display: 'flex', alignItems: 'center', gap: 14,
-              boxShadow: 'var(--shadow-xs)',
-            }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10, background: s.bg,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `1px solid ${s.color}22`, flexShrink: 0,
-              }}>
-                <Icon size={19} color={s.color} />
-              </div>
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>
-                  {isLoading ? '—' : s.value}
+            <div 
+              key={s.label} 
+              className="stat-card-premium"
+              style={{ '--card-grad': `linear-gradient(90deg, ${s.color} 0%, ${s.color}88 100%)` } as any}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div className="icon-box-premium" style={{ color: s.color }}>
+                  <Icon size={20} />
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{s.label}</div>
+                <div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                    {isLoading ? '—' : s.value}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {s.label}
+                  </div>
+                </div>
               </div>
             </div>
           )

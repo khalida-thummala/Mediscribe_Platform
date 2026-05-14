@@ -121,39 +121,37 @@ export default function DashboardPage() {
         {STAT_CARDS.map((s) => {
           const Icon = s.icon
           return (
-            <div key={s.label} className="stat-card" style={{ padding: '20px 22px' }}>
+            <div 
+              key={s.label} 
+              className="stat-card-premium" 
+              style={{ '--card-grad': `linear-gradient(90deg, ${s.color} 0%, ${s.color}88 100%)` } as any}
+            >
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{
-                  width: 42, height: 42, borderRadius: 12, 
-                  background: `color-mix(in srgb, ${s.color}, transparent 88%)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `1px solid color-mix(in srgb, ${s.color}, transparent 80%)`,
-                }}>
-                  <Icon size={20} color={s.color} />
+                <div className="icon-box-premium" style={{ color: s.color }}>
+                  <Icon size={20} />
                 </div>
                 <span style={{
-                  fontSize: 11, fontWeight: 600, 
+                  fontSize: 11, fontWeight: 700, 
                   color: 'var(--emerald)',
                   background: 'var(--emerald-light)', 
+                  padding: '3px 10px', borderRadius: 20, 
+                  display: 'flex', alignItems: 'center', gap: 4,
                   border: '1px solid var(--emerald-light)',
-                  padding: '2px 8px', borderRadius: 20, display: 'flex', alignItems: 'center', gap: 3,
+                  boxShadow: '0 2px 10px rgba(16,185,129,0.1)'
                 }}>
                   <TrendingUp size={10} /> {s.trend}
                 </span>
               </div>
-              <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1, marginBottom: 6, letterSpacing: '-0.02em' }}>
                 {sumLoading ? (
                   <div className="skeleton" style={{ width: 60, height: 28 }} />
                 ) : (
                   String(s.value)
                 )}
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-3)', fontFamily: 'DM Sans, sans-serif' }}>{s.label}</div>
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
-                borderRadius: '0 0 12px 12px',
-                background: `linear-gradient(90deg, ${s.color}, ${s.color}80)`,
-              }} />
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {s.label}
+              </div>
             </div>
           )
         })}
@@ -246,35 +244,39 @@ export default function DashboardPage() {
                   key={a.path}
                   onClick={() => navigate(a.path)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '11px 14px', borderRadius: 12,
-                    border: '1.5px solid var(--border)', background: 'var(--surface)',
-                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '12px 16px', borderRadius: 14,
+                    border: '1px solid var(--border)', background: 'var(--surface)',
+                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     width: '100%',
+                    boxShadow: 'var(--shadow-xs)'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = a.bg
+                    e.currentTarget.style.background = 'var(--surface-hover)'
                     e.currentTarget.style.borderColor = a.color + '40'
-                    e.currentTarget.style.transform = 'translateX(3px)'
+                    e.currentTarget.style.transform = 'translateX(4px)'
+                    e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'var(--surface)'
                     e.currentTarget.style.borderColor = 'var(--border)'
                     e.currentTarget.style.transform = 'translateX(0)'
+                    e.currentTarget.style.boxShadow = 'var(--shadow-xs)'
                   }}
                 >
-                  <div style={{
-                    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                    background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: `1px solid ${a.color}22`,
-                  }}>
-                    <Icon size={18} color={a.color} />
+                  <div className="icon-box-premium" style={{ color: a.color }}>
+                    <Icon size={18} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>{a.title}</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 1 }}>{a.sub}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-1)' }}>{a.title}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 2 }}>{a.sub}</div>
                   </div>
-                  <ArrowRight size={14} color="var(--text-4)" />
+                  <div style={{ 
+                    width: 24, height: 24, borderRadius: '50%', background: 'var(--surface-2)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6 
+                  }}>
+                    <ArrowRight size={12} color="var(--text-3)" />
+                  </div>
                 </button>
               )
             })}
