@@ -55,8 +55,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ userId, onSuccess, on
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h3 className="text-lg font-bold text-gray-900">Verify Your Account</h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <h3 className="text-lg font-bold" style={{ color: 'var(--text-1)' }}>Verify Your Account</h3>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-3)' }}>
           Enter the 6-digit code sent to your email and phone.
         </p>
       </div>
@@ -74,7 +74,14 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ userId, onSuccess, on
               value={digit}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
-              className="w-12 h-12 text-center text-xl font-bold border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0d6e6e] outline-none"
+              className="w-12 h-12 text-center text-xl font-bold rounded-lg outline-none transition-all"
+              style={{ 
+                background: 'var(--bg-2)', 
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)'
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--teal)')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
           ))}
         </div>
@@ -83,7 +90,7 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ userId, onSuccess, on
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#0d6e6e] hover:bg-[#0a5060] text-white font-bold py-2.5 px-4 rounded-lg transition-colors duration-200 disabled:opacity-70"
+            className="btn btn-primary w-full py-3"
           >
             {isSubmitting ? 'Verifying...' : 'Verify OTP'}
           </button>
@@ -91,7 +98,8 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ userId, onSuccess, on
           <button
             type="button"
             onClick={onBack}
-            className="w-full text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+            className="btn w-full py-2.5"
+            style={{ border: 'none', background: 'transparent', color: 'var(--text-3)' }}
           >
             Back to Registration
           </button>

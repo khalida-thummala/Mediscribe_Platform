@@ -156,6 +156,8 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
 def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     """
     Consume a reset token and set a new password.
+    Supports development bypass if email is provided.
     """
+    if not data.token and data.email:
+        return AuthService.reset_password_by_email(db, data.email, data.new_password)
     return AuthService.reset_password(db, data.token, data.new_password)
-

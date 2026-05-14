@@ -46,7 +46,7 @@ const LoginForm: React.FC = () => {
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Email */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
+        <label className="block text-xs font-bold mb-1 uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>
           Email Address
         </label>
         <input
@@ -54,14 +54,21 @@ const LoginForm: React.FC = () => {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0d6e6e] focus:border-transparent outline-none transition-all"
+          className="w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all"
+          style={{ 
+            background: 'var(--bg-2)', 
+            border: '1px solid var(--border)',
+            color: 'var(--text-1)'
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--teal)')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           placeholder="doctor@clinic.com"
         />
       </div>
 
       {/* Password with eye toggle */}
       <div>
-        <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
+        <label className="block text-xs font-bold mb-1 uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>
           Password
         </label>
         <div className="relative">
@@ -70,14 +77,24 @@ const LoginForm: React.FC = () => {
             type={showPw ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0d6e6e] focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-2.5 pr-10 rounded-lg text-sm outline-none transition-all"
+            style={{ 
+              background: 'var(--bg-2)', 
+              border: '1px solid var(--border)',
+              color: 'var(--text-1)'
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--teal)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
             placeholder="••••••••"
           />
           <button
             type="button"
             tabIndex={-1}
             onClick={() => setShowPw((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+            style={{ color: 'var(--text-4)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-2)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-4)')}
           >
             {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -86,14 +103,23 @@ const LoginForm: React.FC = () => {
 
       {/* Remember me + Forgot password */}
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-          <input type="checkbox" className="rounded text-[#0d6e6e] focus:ring-[#0d6e6e]" />
+        <label className="flex items-center gap-2 text-sm cursor-pointer select-none" style={{ color: 'var(--text-3)' }}>
+          <input 
+            type="checkbox" 
+            className="rounded transition-all" 
+            style={{ 
+              accentColor: 'var(--teal)',
+              background: 'var(--bg-2)',
+              border: '1px solid var(--border)'
+            }} 
+          />
           Remember me
         </label>
         <button
           type="button"
           onClick={() => navigate('/forgot-password')}
-          className="text-sm font-semibold text-[#0d6e6e] hover:underline"
+          className="text-sm font-bold hover:underline transition-colors"
+          style={{ color: 'var(--teal)' }}
         >
           Forgot password?
         </button>
@@ -102,7 +128,7 @@ const LoginForm: React.FC = () => {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-[#0d6e6e] hover:bg-[#0a5060] text-white font-bold py-2.5 px-4 rounded-lg transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+        className="btn btn-primary w-full py-3"
       >
         {isSubmitting ? 'Signing in…' : 'Sign In to MediScribe'}
       </button>
@@ -111,7 +137,10 @@ const LoginForm: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0d6e6e] transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-bold transition-colors"
+          style={{ color: 'var(--text-3)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--teal)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
