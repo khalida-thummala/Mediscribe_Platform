@@ -22,6 +22,7 @@ export default function SOAPEditor({ consultationId }: Props) {
     follow_up_needed: false,
     follow_up_days: 0
   })
+  const [reportId, setReportId] = useState<string | null>(null)
   const [synced, setSynced] = useState(false)
   const [reportStatus, setReportStatus] = useState<string>('draft')
   const [isAutoSaving, setIsAutoSaving] = useState(false)
@@ -50,6 +51,7 @@ export default function SOAPEditor({ consultationId }: Props) {
         setFields(loaded)
         lastSavedFields.current = JSON.stringify(loaded)
         setReportStatus(data.status || 'draft')
+        setReportId(data.report_id || null)
         setSynced(true)
       }
     },
@@ -72,6 +74,7 @@ export default function SOAPEditor({ consultationId }: Props) {
     setFields(loaded)
     lastSavedFields.current = JSON.stringify(loaded)
     setReportStatus(data.status || 'draft')
+    setReportId(data.report_id || null)
     setSynced(true)
   }, [reportData])
 
@@ -83,9 +86,10 @@ export default function SOAPEditor({ consultationId }: Props) {
         return await reportsApi.update(consultationId, fields as any)
       }
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       lastSavedFields.current = JSON.stringify(fields)
       setIsAutoSaving(false)
+      if (data?.report_id) setReportId(data.report_id)
       qc.invalidateQueries({ queryKey: ['reports'] })
       qc.invalidateQueries({ queryKey: ['report', consultationId] })
     },
@@ -121,6 +125,7 @@ export default function SOAPEditor({ consultationId }: Props) {
         setFields(generated)
         lastSavedFields.current = JSON.stringify(generated)
         setReportStatus(data.status || 'draft')
+        setReportId(data.report_id || null)
         setSynced(true)
         qc.invalidateQueries({ queryKey: ['reports'] })
         qc.invalidateQueries({ queryKey: ['consultations'] })
@@ -131,13 +136,23 @@ export default function SOAPEditor({ consultationId }: Props) {
   })
 
   const exportMut = useMutation({
-    mutationFn: (format: string) => reportsApi.export(consultationId, { format } as any),
-    onSuccess: (data: any) => {
-      if (data && data.download_url) {
-        window.open(data.download_url, '_blank')
+    mutationFn: (format: string) => {
+      const targetId = reportId || consultationId
+      return reportsApi.export(targetId, { format } as any)
+    },
+    onSuccess: (blob: any, format: string) => {
+      if (blob) {
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `SOAP_Report_${(reportId || consultationId).slice(0, 8)}.${format}`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
         toast.success('Report exported successfully')
       } else {
-        toast.error('Export failed: No URL returned')
+        toast.error('Export failed: Empty file received')
       }
     },
     onError: () => toast.error('Export failed'),
