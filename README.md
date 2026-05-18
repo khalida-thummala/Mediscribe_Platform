@@ -39,7 +39,7 @@ Follow the detailed instructions in [DEPLOYMENT.md](./DEPLOYMENT.md) to set up y
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/gowthami-29/mediscribe.git
+git clone https://github.com/khalida-thummala/Mediscribe_Platform.git
 cd mediscribe
 
 # 2. Spin up the Backend
