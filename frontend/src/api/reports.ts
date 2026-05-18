@@ -22,4 +22,7 @@ export const reportsApi = {
 
   email: (id: string, payload: { recipient_email: string; subject: string; message?: string }) =>
     apiClient.post(`/reports/${id}/email`, payload).then((r) => r.data),
+
+  delete: (id: string) =>
+    apiClient.delete(`/reports/${id}`).then((r) => r.data),
 }

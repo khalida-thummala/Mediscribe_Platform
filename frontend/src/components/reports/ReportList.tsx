@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { patientsApi } from '@/api/patients'
-import { FileText, Download, CheckCircle2, Clock, PenLine, Archive, Edit2, RefreshCw } from 'lucide-react'
+import { FileText, Download, CheckCircle2, Clock, PenLine, Archive, Edit2, RefreshCw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import SOAPEditor from '@/components/soap/SOAPEditor'
@@ -75,6 +75,17 @@ export default function ReportList({ search = '' }: Props) {
       toast.success(`Report downloaded as ${fmt.toUpperCase()}`)
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to export report')
+    }
+  }
+
+  const handleDelete = async (reportId: string) => {
+    if (!window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) return
+    try {
+      await reportsApi.delete(reportId)
+      toast.success('Report deleted successfully')
+      refetch()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to delete report')
     }
   }
 
@@ -225,6 +236,21 @@ export default function ReportList({ search = '' }: Props) {
                           >
                             <Edit2 size={12} /> {r.status === 'approved' ? 'View' : 'Edit'}
                           </button>
+                          
+                          <button
+                            onClick={() => handleDelete(r.report_id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5,
+                              padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
+                              background: '#fee2e2', color: '#ef4444',
+                              border: 'none', fontSize: 11.5, fontWeight: 600,
+                              transition: 'all 0.15s',
+                            }}
+                            title="Delete Report"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+
                           {(['pdf'] as const).map((fmt) => (
                             <button
                               key={fmt}

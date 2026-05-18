@@ -8,13 +8,7 @@ import os
 
 security = HTTPBearer()
 
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkeythatisverylongandsecure")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
+from app.core.config import settings
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -23,7 +17,7 @@ def get_current_user(
     token = credentials.credentials
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email = payload.get("sub")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
