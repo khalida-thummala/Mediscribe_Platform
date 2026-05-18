@@ -221,7 +221,59 @@ def generate_soap(text: str, historical_context: str = ""):
         return _json_error(f"SOAP generation exception: {str(e)}", transcript)
 
 
-def generate_soap_from_image(image_path: str, context: str = ""):
+def generate_population_report(disease_context: str, population_context: str):
+    """
+    Analyzes the entire patient database for a specific disease/condition 
+    and formats the research report within the standard SOAP JSON schema so it renders in the UI.
+    """
+    if not OPENAI_API_KEY or not ENDPOINT:
+        return _json_error("AI population analysis unavailable")
+
+    system_message = (
+        "You are a medical AI assistant. The user has uploaded a medical document or consultation note without a specific Patient ID. "
+        "Your task is to FIRST write a standard, comprehensive SOAP note for the specific patient/case described in the uploaded document. "
+        "THEN, you must act as a population researcher. Analyze the [POPULATION CONTEXT] (which contains records from other patients "
+        "in the database with similar conditions) and append your population research findings to the SOAP note.\n\n"
+        "You MUST return the report strictly as valid JSON using the exact standard SOAP keys:\n"
+        "- subjective: Write the Subjective section for the uploaded document.\n"
+        "- objective: Write the Objective section for the uploaded document. At the end, add a paragraph titled 'POPULATION STATISTICS:' noting how many matching patients were found in the database.\n"
+        "- assessment: Write the Assessment for the uploaded document. At the end, add a paragraph titled 'POPULATION TRENDS:' summarizing common symptoms/findings among the database matches.\n"
+        "- plan: Write the Plan for the uploaded document. At the end, add a paragraph titled 'POPULATION TREATMENTS:' detailing the common medications/protocols prescribed to the database matches.\n"
+        "- medications: Array of specific medication strings extracted from both the uploaded document and the population matches.\n"
+        "- follow_up_needed: true/false.\n"
+        "- follow_up_days: Number."
+    )
+
+    prompt = (
+        f"--- Uploaded Document (Target Disease/Condition) ---\n{disease_context}\n\n"
+        f"--- [POPULATION CONTEXT] (Matches found across database) ---\n{population_context}"
+    )
+
+    body = {
+        "messages": [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.2,
+        "max_tokens": 1200,
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        response = _post_chat(body)
+        if response.status_code != 200:
+            return _json_error(f"AI population request failed with status {response.status_code}")
+
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+        soap = _normalize_soap(_extract_json(content))
+        return json.dumps(soap)
+
+    except Exception as e:
+        return _json_error(f"Population report generation exception: {str(e)}")
+
+
+def generate_soap_from_image(image_path: str, context: str = "", population_context: str = ""):
     if not OPENAI_API_KEY or not ENDPOINT:
         return _json_error("AI image analysis unavailable")
 
@@ -238,12 +290,25 @@ def generate_soap_from_image(image_path: str, context: str = ""):
         )
         if context:
             prompt = f"{prompt}\n\nAdditional context: {context}"
+        
+        if population_context:
+            prompt = f"{prompt}\n\n--- [POPULATION CONTEXT] (Matches found across database) ---\n{population_context}"
+            system_msg = (
+                "You are a careful medical AI assistant that extracts clinical information into SOAP JSON. "
+                "Because the user provided [POPULATION CONTEXT], you must ALSO append population research findings "
+                "to your SOAP output:\n"
+                "- objective: At the end, add 'POPULATION STATISTICS:' noting how many matching patients were found.\n"
+                "- assessment: At the end, add 'POPULATION TRENDS:' summarizing common database findings.\n"
+                "- plan: At the end, add 'POPULATION TREATMENTS:' detailing medications prescribed to database matches."
+            )
+        else:
+            system_msg = "You are a careful medical AI assistant that extracts clinical information into SOAP JSON."
 
         body = {
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a careful medical AI assistant that extracts clinical information into SOAP JSON.",
+                    "content": system_msg,
                 },
                 {
                     "role": "user",

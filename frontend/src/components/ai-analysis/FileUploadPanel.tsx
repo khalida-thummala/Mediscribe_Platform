@@ -19,6 +19,7 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
   const [patientId, setPatientId] = useState('')
   const [manualText, setManualText] = useState('')
   const [uploadMode, setUploadMode] = useState<'file' | 'text'>('file')
+  const [analysisMode, setAnalysisMode] = useState<'patient' | 'population'>('patient')
 
   const uploadMut = useMutation({
     mutationFn: async (payload: { file?: File; text?: string }) => {
@@ -58,6 +59,7 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
   })
 
   const handleFile = (file: File) => {
+    if (analysisMode === 'patient' && !patientId.trim()) { toast.error('Please enter a Patient ID for Individual RAG'); return }
     const MAX_MB = 50
     if (file.size > MAX_MB * 1024 * 1024) { toast.error(`File must be under ${MAX_MB} MB`); return }
     setFileName(file.name)
@@ -67,6 +69,7 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
   }
 
   const handleManualSubmit = () => {
+    if (analysisMode === 'patient' && !patientId.trim()) { toast.error('Please enter a Patient ID for Individual RAG'); return }
     if (!manualText.trim()) { toast.error('Please enter some text'); return }
     setFileName('Manual Clinical Note')
     setPhase('uploading')
@@ -86,20 +89,53 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
 
       {phase === 'idle' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Patient ID Input */}
-          <div style={{ marginBottom: 4 }}>
+          {/* Analysis Mode Toggle */}
+          <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, display: 'block' }}>
-              Patient ID (Optional for RAG Context)
+              Analysis Mode
             </label>
-            <input 
-              type="text"
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
-              placeholder="e.g. a933ce10-0415-4901-ba2b-c448a841caeb"
-              className="form-control"
-              style={{ fontSize: 13, padding: '10px 14px' }}
-            />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: 'var(--text-1)' }}>
+                <input 
+                  type="radio" 
+                  name="analysisMode" 
+                  value="patient" 
+                  checked={analysisMode === 'patient'} 
+                  onChange={() => setAnalysisMode('patient')} 
+                  style={{ accentColor: 'var(--teal)' }}
+                />
+                Individual Patient (RAG)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: 'var(--text-1)' }}>
+                <input 
+                  type="radio" 
+                  name="analysisMode" 
+                  value="population" 
+                  checked={analysisMode === 'population'} 
+                  onChange={() => { setAnalysisMode('population'); setPatientId(''); }} 
+                  style={{ accentColor: 'var(--teal)' }}
+                />
+                Population Research
+              </label>
+            </div>
           </div>
+
+          {/* Patient ID Input (Only shown for Individual Patient Mode) */}
+          {analysisMode === 'patient' && (
+            <div style={{ marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, display: 'block' }}>
+                Patient ID (Required)
+              </label>
+              <input 
+                type="text"
+                value={patientId}
+                onChange={(e) => setPatientId(e.target.value)}
+                placeholder="e.g. a933ce10-0415-4901-ba2b-c448a841caeb"
+                className="form-control"
+                style={{ fontSize: 13, padding: '10px 14px' }}
+              />
+            </div>
+          )}
 
           {/* Mode Toggle */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>

@@ -145,6 +145,10 @@ class AnalysisService:
     async def process_upload(db: Session, file, file_type: str, user_id: str, organization_id: str, patient_id: Optional[str] = None):
         if patient_id:
             patient_id = patient_id.strip()
+            if not patient_id:
+                patient_id = None
+        else:
+            patient_id = None
         try:
             upload_id = str(uuid.uuid4())
             
@@ -231,14 +235,29 @@ class AnalysisService:
 
         # 1. Generate SOAP from document
         import json
-        from app.core.ai import generate_soap, compare_medical_reports
+        from app.core.ai import generate_soap, compare_medical_reports, generate_population_report
         from app.models.report import Report
 
         file_path = record.key_entities.get("file_path") if isinstance(record.key_entities, dict) else None
-        if record.source_file_type == "image" and file_path and os.path.exists(file_path):
-            soap_json = generate_soap_from_image(file_path, record.extracted_text or "")
+        
+        if not record.patient_id:
+            # Population Research Mode
+            try:
+                population_context = RagService.get_population_context(db, record.extracted_text or "")
+                
+                if record.source_file_type == "image" and file_path and os.path.exists(file_path):
+                    from app.core.ai import generate_soap_from_image
+                    soap_json = generate_soap_from_image(file_path, context=record.extracted_text or "", population_context=population_context)
+                else:
+                    soap_json = generate_population_report(record.extracted_text or "", population_context)
+            except Exception as pop_err:
+                print(f"Population RAG Error: {pop_err}")
+                soap_json = generate_soap(record.extracted_text or "")
+        elif record.source_file_type == "image" and file_path and os.path.exists(file_path):
+            from app.core.ai import generate_soap_from_image
+            soap_json = generate_soap_from_image(file_path, context=record.extracted_text or "")
         else:
-            # Inject historical context into the prompt
+            # Standard Patient RAG Mode
             soap_json = generate_soap(
                 record.extracted_text or "", 
                 historical_context=historical_context

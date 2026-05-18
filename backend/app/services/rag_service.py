@@ -124,3 +124,51 @@ class RagService:
             context_parts.append(f"--- Record {i+1} {source_info} ---\n{chunk['content']}")
             
         return "\n\n".join(context_parts)
+
+    @staticmethod
+    def query_all_patients(db: Session, query_text: str, limit: int = 15) -> List[Dict[str, Any]]:
+        """Find most relevant historical chunks across ALL patients."""
+        if not query_text:
+            return []
+
+        # 1. Generate embedding for query
+        query_embedding = RagService._get_embedding(query_text)
+
+        # 2. Similarity Search across entire database
+        sql = text("""
+            SELECT patient_id, content, source_type, created_at, 1 - (embedding <=> :embedding) as similarity
+            FROM document_embeddings
+            ORDER BY embedding <=> :embedding
+            LIMIT :limit
+        """)
+
+        results = db.execute(sql, {
+            "embedding": str(query_embedding),
+            "limit": limit
+        }).fetchall()
+
+        return [
+            {
+                "patient_id": str(r.patient_id),
+                "content": r.content,
+                "source_type": r.source_type,
+                "created_at": r.created_at.isoformat(),
+                "similarity": float(r.similarity)
+            }
+            for r in results
+        ]
+
+    @staticmethod
+    def get_population_context(db: Session, query_text: str) -> str:
+        """Format retrieved population history for prompt injection."""
+        relevant_chunks = RagService.query_all_patients(db, query_text)
+        
+        if not relevant_chunks:
+            return "No historical medical records found matching this disease/condition in the database."
+
+        context_parts = ["The following are relevant excerpts from various patients in our database matching this condition:"]
+        for i, chunk in enumerate(relevant_chunks):
+            source_info = f"[Patient UUID: {chunk['patient_id']}, Source: {chunk['source_type'].upper()}]"
+            context_parts.append(f"--- Record {i+1} {source_info} ---\n{chunk['content']}")
+            
+        return "\n\n".join(context_parts)

@@ -146,7 +146,7 @@ export default function PatientTable() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Patient', 'Medical ID', 'Gender', 'Date of Birth', 'Status', 'Registered', 'Actions'].map((h) => (
+                  {['Patient', 'IDs', 'Gender', 'Date of Birth', 'Status', 'Registered', 'Actions'].map((h) => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -177,15 +177,25 @@ export default function PatientTable() {
                           </div>
                         </div>
                       </td>
-                      {/* Medical ID */}
+                      {/* IDs */}
                       <td>
-                        <code style={{
-                          fontSize: 12, background: 'var(--surface-2)',
-                          padding: '2px 7px', borderRadius: 6,
-                          border: '1px solid var(--border)', color: 'var(--text-2)',
-                        }}>
-                          {p.medical_id ?? '—'}
-                        </code>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>MRN: <strong>{p.medical_id ?? '—'}</strong></span>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(p.patient_id); toast.success('System ID Copied!') }}
+                            title="Click to copy System ID for AI Upload"
+                            style={{
+                              background: 'var(--surface-2)', border: '1px solid var(--border)',
+                              padding: '3px 8px', borderRadius: 4, fontSize: 10, color: 'var(--text-2)',
+                              cursor: 'pointer', textAlign: 'left', fontFamily: 'monospace',
+                              transition: 'all 0.2s', width: 'fit-content'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--teal)'; e.currentTarget.style.color = 'var(--teal)' }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)' }}
+                          >
+                            Sys ID: {p.patient_id.slice(0, 8)}...
+                          </button>
+                        </div>
                       </td>
                       {/* Gender */}
                       <td style={{ textTransform: 'capitalize', fontSize: 13 }}>{p.gender ?? '—'}</td>
