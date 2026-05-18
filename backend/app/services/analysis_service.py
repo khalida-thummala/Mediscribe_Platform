@@ -6,7 +6,8 @@ import uuid
 import os
 from app.models.analysis import Analysis
 from app.schemas.analysis import AIAnalysisCreate
-from app.core.ai import generate_soap, generate_soap_from_image
+from app.core.ai import generate_soap_from_image
+from app.services.rag_service import RagService
 
 # Use the correct ORM model class name
 AIAnalysisRecord = Analysis
@@ -21,7 +22,7 @@ class AnalysisService:
                 try:
                     from pypdf import PdfReader
                 except ImportError:
-                    from PyPDF2 import PdfReader
+                    from PyPDF2 import PdfReader  # type: ignore
 
                 reader = PdfReader(file_path)
                 return "\n\n".join((page.extract_text() or "") for page in reader.pages).strip()
@@ -141,7 +142,9 @@ class AnalysisService:
         return record
 
     @staticmethod
-    async def process_upload(db: Session, file, file_type: str, user_id: str, organization_id: str):
+    async def process_upload(db: Session, file, file_type: str, user_id: str, organization_id: str, patient_id: Optional[str] = None):
+        if patient_id:
+            patient_id = patient_id.strip()
         try:
             upload_id = str(uuid.uuid4())
             
@@ -165,9 +168,11 @@ class AnalysisService:
                 )
             
             new_record = Analysis(
+                analysis_id=str(uuid.uuid4()),
                 upload_id=upload_id,
                 user_id=user_id,
                 organization_id=organization_id,
+                patient_id=patient_id,
                 source_file_name=file.filename,
                 source_file_type=file_type,
                 extracted_text=extracted_text,
@@ -177,6 +182,22 @@ class AnalysisService:
             db.add(new_record)
             db.commit()
             db.refresh(new_record)
+
+            # --- RAG Integration: Index the extracted text ---
+            if extracted_text and new_record.patient_id:
+                try:
+                    RagService.index_document(
+                        db, 
+                        patient_id=new_record.patient_id,
+                        source_id=new_record.analysis_id,
+                        source_type="document",
+                        content=extracted_text
+                    )
+                except Exception as index_err:
+                    print(f"RAG Indexing Error: {index_err}")
+                    db.rollback()
+            # ------------------------------------------------
+
             return new_record
         except Exception as e:
             print(f"UPLOAD ERROR: {str(e)}")
@@ -196,6 +217,18 @@ class AnalysisService:
         record.analysis_status = "analyzing"
         db.commit()
         
+        # 0. RAG: Retrieve historical context for this patient
+        historical_context = ""
+        if record.patient_id:
+            try:
+                historical_context = RagService.get_augmented_context(
+                    db, 
+                    patient_id=record.patient_id, 
+                    query_text=record.extracted_text or ""
+                )
+            except Exception as rag_err:
+                print(f"RAG Retrieval Error: {rag_err}")
+
         # 1. Generate SOAP from document
         import json
         from app.core.ai import generate_soap, compare_medical_reports
@@ -205,46 +238,66 @@ class AnalysisService:
         if record.source_file_type == "image" and file_path and os.path.exists(file_path):
             soap_json = generate_soap_from_image(file_path, record.extracted_text or "")
         else:
-            soap_json = generate_soap(record.extracted_text or "")
+            # Inject historical context into the prompt
+            soap_json = generate_soap(
+                record.extracted_text or "", 
+                historical_context=historical_context
+            )
 
         try:
+            print(f"DEBUG: Starting AI analysis for {analysis_id}...")
             soap_data = json.loads(soap_json)
             if soap_data.get("_error"):
+                print(f"DEBUG: AI returned error: {soap_data['_error']}")
                 raise ValueError(soap_data["_error"])
 
+            print("DEBUG: AI generated SOAP successfully. Updating record...")
             record.generated_subjective = soap_data.get("subjective")
             record.generated_objective = soap_data.get("objective")
             record.generated_assessment = soap_data.get("assessment")
             record.generated_plan = soap_data.get("plan")
-            record.generated_medications = soap_data.get("medications", [])
+            # Ensure medications is a list of dicts
+            raw_meds = soap_data.get("medications", [])
+            sanitized_meds = []
+            if isinstance(raw_meds, list):
+                for m in raw_meds:
+                    if isinstance(m, dict):
+                        sanitized_meds.append(m)
+                    elif isinstance(m, str):
+                        sanitized_meds.append({"name": m})
+            record.generated_medications = sanitized_meds
             record.confidence_score = 94.2
             
             # 2. Intelligent Comparison (Phase 5)
             if record.patient_id:
-                # Fetch most recent finalized report for this patient
+                print(f"DEBUG: Checking for previous reports for patient {record.patient_id}...")
                 latest_report = db.query(Report).filter(
                     Report.patient_id == record.patient_id,
                     Report.status == "finalized"
                 ).order_by(Report.created_at.desc()).first()
 
                 if latest_report:
+                    print(f"DEBUG: Found latest report {latest_report.report_id}. Comparing...")
                     existing_data = {
                         "subjective": latest_report.subjective,
                         "objective": latest_report.objective,
                         "assessment": latest_report.assessment,
                         "plan": latest_report.plan
                     }
-                    # Compare
                     record.comparison_data = compare_medical_reports(existing_data, soap_data)
             
             record.analysis_status = "completed"
+            print("DEBUG: Saving report draft...")
             AnalysisService._upsert_report_from_analysis(db, record, status="draft")
         except Exception as e:
-            print(f"Analysis Error: {str(e)}")
+            print(f"CRITICAL ANALYSIS ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
             record.analysis_status = "failed"
             
         db.commit()
         db.refresh(record)
+        print(f"DEBUG: Analysis for {analysis_id} finished with status {record.analysis_status}")
         return record
 
     @staticmethod

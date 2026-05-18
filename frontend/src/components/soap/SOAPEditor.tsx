@@ -159,7 +159,10 @@ export default function SOAPEditor({ consultationId }: Props) {
   })
 
   const approveMut = useMutation({
-    mutationFn: () => reportsApi.approve(consultationId),
+    mutationFn: () => {
+      const targetId = reportId || consultationId
+      return reportsApi.approve(targetId)
+    },
     onSuccess: () => {
       setReportStatus('approved')
       qc.invalidateQueries({ queryKey: ['reports'] })

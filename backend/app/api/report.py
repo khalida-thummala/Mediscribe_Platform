@@ -106,28 +106,53 @@ def finalize_report(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    report = ReportService.finalize_report(
-        db, report_id, current_user.user_id, current_user.organization_id
-    )
+    # Try by report_id first
+    report = db.query(Report).filter(
+        Report.report_id == report_id,
+        Report.organization_id == current_user.organization_id
+    ).first()
+
+    # Fallback to consultation_id
+    if not report:
+        report = db.query(Report).filter(
+            Report.consultation_id == report_id,
+            Report.organization_id == current_user.organization_id
+        ).first()
+
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+
+    report = ReportService.finalize_report(
+        db, report.report_id, current_user.user_id, current_user.organization_id
+    )
     return _serialize_report(report)
 
 @router.post("/{report_id}/approve")
 def approve_report(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(
-        require_role(["admin", "supervisor"])
-    )
+    current_user=Depends(get_current_user)
 ):
+    # Try by report_id first
     report = db.query(Report).filter(
         Report.report_id == report_id,
         Report.organization_id == current_user.organization_id
     ).first()
 
+    # Fallback to consultation_id
+    if not report:
+        report = db.query(Report).filter(
+            Report.consultation_id == report_id,
+            Report.organization_id == current_user.organization_id
+        ).first()
+
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+
+    # Check permissions: Admin/Supervisor can approve anything. 
+    # Practitioners can only approve their own reports.
+    if current_user.role not in ["admin", "supervisor"] and report.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     report.status = "approved"
     report.approved_by = current_user.user_id
@@ -135,6 +160,22 @@ def approve_report(
 
     db.commit()
     db.refresh(report)
+
+    # --- RAG Integration: Index the newly approved report ---
+    if report.patient_id:
+        from app.services.rag_service import RagService
+        content = f"SUBJECTIVE:\n{report.subjective}\n\nOBJECTIVE:\n{report.objective}\n\nASSESSMENT:\n{report.assessment}\n\nPLAN:\n{report.plan}"
+        try:
+            RagService.index_document(
+                db,
+                patient_id=report.patient_id,
+                source_id=report.report_id,
+                source_type="approved_report",
+                content=content
+            )
+        except Exception as index_err:
+            logger.error(f"RAG Indexing Error (Approve API): {index_err}")
+    # --------------------------------------------------------
 
     return _serialize_report(report)
 
@@ -185,6 +226,24 @@ def archive_report(
 
 
 
+@router.delete("/{report_id}")
+def delete_report(
+    report_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    report = db.query(Report).filter(
+        Report.report_id == report_id,
+        Report.organization_id == current_user.organization_id
+    ).first()
+
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    db.delete(report)
+    db.commit()
+
+    return {"message": "Report deleted successfully"}
 
 @router.post("/{report_id}/export")
 def export_report(

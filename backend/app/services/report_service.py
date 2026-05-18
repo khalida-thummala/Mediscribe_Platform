@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 from app.models.report import Report
 from app.schemas.report import SoapReportCreate, SoapReportUpdate
+from app.services.rag_service import RagService
 
 # Alias for clarity
 SoapReport = Report
@@ -59,6 +60,22 @@ class ReportService:
             report.approved_by = user_id
             db.commit()
             db.refresh(report)
+
+            # --- RAG Integration: Index the finalized report ---
+            if report.patient_id:
+                content = f"SUBJECTIVE:\n{report.subjective}\n\nOBJECTIVE:\n{report.objective}\n\nASSESSMENT:\n{report.assessment}\n\nPLAN:\n{report.plan}"
+                try:
+                    RagService.index_document(
+                        db,
+                        patient_id=report.patient_id,
+                        source_id=report.report_id,
+                        source_type="finalized_report",
+                        content=content
+                    )
+                except Exception as index_err:
+                    print(f"RAG Indexing Error (Finalize): {index_err}")
+            # --------------------------------------------------
+
         return report
     @staticmethod
     def generate_soap_report(db: Session, consultation_id: str, organization_id: str):

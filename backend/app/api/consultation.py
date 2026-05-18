@@ -168,6 +168,7 @@ def generate_soap_endpoint(
     ).first()
 
     from app.core.ai import generate_soap, check_drug_interactions
+    from app.services.rag_service import RagService
 
     transcript = (consultation.transcription_text or "").strip()
     if not transcript:
@@ -176,7 +177,20 @@ def generate_soap_endpoint(
             detail="No transcription found for this consultation"
         )
 
-    ai_output = generate_soap(transcript)
+    # RAG Integration: Fetch historical context for this patient
+    historical_context = ""
+    if consultation.patient_id:
+        try:
+            historical_context = RagService.get_augmented_context(
+                db, 
+                patient_id=consultation.patient_id, 
+                query_text=transcript
+            )
+        except Exception as e:
+            # If RAG fails, we just proceed without historical context
+            print(f"RAG Retrieval Error in Consultation: {e}")
+
+    ai_output = generate_soap(transcript, historical_context=historical_context)
 
     try:
         soap = json.loads(ai_output)
