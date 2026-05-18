@@ -36,8 +36,9 @@ export default function AIAnalysisPage() {
             How AI Analysis Works
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.6, opacity: 0.9 }}>
-            Upload a PDF, DOCX, or image of a medical report. Our AI extracts text, generates a structured SOAP note,
-            and compares it against your existing consultation notes. Supports files up to 50 MB.
+            Our upgraded AI now uses <strong>RAG (Retrieval-Augmented Generation)</strong> to analyze documents.
+            It automatically retrieves relevant information from historical patient records and medical documents
+            to generate highly contextualized and accurate SOAP reports.
           </div>
         </div>
       </div>

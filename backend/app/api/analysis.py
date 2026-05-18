@@ -26,18 +26,19 @@ def get_analyses(
 ):
     return AnalysisService.get_analysis_records(db, current_user.organization_id)
 
-@router.post("/upload")
+@router.post("/upload", response_model=AIAnalysisRecord)
 async def upload_document(
     file: UploadFile = File(...),
     file_type: str = Form(...),
+    patient_id: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     return await AnalysisService.process_upload(
-        db, file, file_type, current_user.user_id, current_user.organization_id
+        db, file, file_type, current_user.user_id, current_user.organization_id, patient_id=patient_id
     )
 
-@router.post("/{analysis_id}/analyze")
+@router.post("/{analysis_id}/analyze", response_model=AIAnalysisRecord)
 def analyze_document(
     analysis_id: str,
     db: Session = Depends(get_db),

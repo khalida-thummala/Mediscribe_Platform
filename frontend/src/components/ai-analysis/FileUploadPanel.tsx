@@ -16,11 +16,26 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
   const [fileName, setFileName] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const [patientId, setPatientId] = useState('')
+  const [manualText, setManualText] = useState('')
+  const [uploadMode, setUploadMode] = useState<'file' | 'text'>('file')
+
   const uploadMut = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (payload: { file?: File; text?: string }) => {
       const formData = new FormData()
-      formData.append('file', file)
-      formData.append('file_type', file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'docx')
+      if (payload.file) {
+        formData.append('file', payload.file)
+        formData.append('file_type', payload.file.type.includes('pdf') ? 'pdf' : payload.file.type.includes('image') ? 'image' : 'docx')
+      } else if (payload.text) {
+        // Create a dummy file for the backend which expects a file upload
+        const blob = new Blob([payload.text], { type: 'text/plain' })
+        const file = new File([blob], 'manual_entry.txt', { type: 'text/plain' })
+        formData.append('file', file)
+        formData.append('file_type', 'docx') // Backend handles docx/txt similarly
+      }
+      
+      if (patientId) formData.append('patient_id', patientId)
+      
       const res = await apiClient.post('/ai-analysis/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => { if (e.total) setProgress(Math.round((e.loaded * 100) / e.total)) },
@@ -48,7 +63,15 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
     setFileName(file.name)
     setPhase('uploading')
     setProgress(0)
-    uploadMut.mutate(file)
+    uploadMut.mutate({ file })
+  }
+
+  const handleManualSubmit = () => {
+    if (!manualText.trim()) { toast.error('Please enter some text'); return }
+    setFileName('Manual Clinical Note')
+    setPhase('uploading')
+    setProgress(100)
+    uploadMut.mutate({ text: manualText })
   }
 
   return (
@@ -62,20 +85,84 @@ export default function FileUploadPanel({ onAnalysisReady }: Props) {
       />
 
       {phase === 'idle' && (
-        <div
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
-          style={{
-            border: '2px dashed var(--border)', borderRadius: 14, padding: '48px 32px',
-            textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--teal)'; e.currentTarget.style.background = 'var(--surface-hover)' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '' }}
-        >
-          <UploadCloud size={48} color="var(--teal)" style={{ marginBottom: 12, opacity: 0.7 }} />
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>Drop a file or click to upload</div>
-          <div style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Supports PDF, DOCX, JPG, PNG — up to 50 MB</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Patient ID Input */}
+          <div style={{ marginBottom: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8, display: 'block' }}>
+              Patient ID (Optional for RAG Context)
+            </label>
+            <input 
+              type="text"
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
+              placeholder="e.g. a933ce10-0415-4901-ba2b-c448a841caeb"
+              className="form-control"
+              style={{ fontSize: 13, padding: '10px 14px' }}
+            />
+          </div>
+
+          {/* Mode Toggle */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
+            <button 
+              onClick={() => setUploadMode('file')}
+              style={{ 
+                flex: 1, padding: '8px', fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
+                background: uploadMode === 'file' ? 'var(--teal-light)' : 'var(--surface)',
+                border: uploadMode === 'file' ? '1px solid var(--teal)' : '1px solid var(--border)',
+                color: uploadMode === 'file' ? 'var(--teal)' : 'var(--text-2)'
+              }}
+            >
+              Upload File
+            </button>
+            <button 
+              onClick={() => setUploadMode('text')}
+              style={{ 
+                flex: 1, padding: '8px', fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
+                background: uploadMode === 'text' ? 'var(--teal-light)' : 'var(--surface)',
+                border: uploadMode === 'text' ? '1px solid var(--teal)' : '1px solid var(--border)',
+                color: uploadMode === 'text' ? 'var(--teal)' : 'var(--text-2)'
+              }}
+            >
+              Paste Text
+            </button>
+          </div>
+
+          {uploadMode === 'file' ? (
+            <div
+              onClick={() => inputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+              style={{
+                border: '2px dashed var(--border)', borderRadius: 14, padding: '48px 32px',
+                textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s',
+                background: 'var(--surface-hover-op)'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--teal)'; e.currentTarget.style.background = 'var(--surface-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface-hover-op)' }}
+            >
+              <UploadCloud size={48} color="var(--teal)" style={{ marginBottom: 12, opacity: 0.7 }} />
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>Drop a file or click to upload</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Supports PDF, DOCX, JPG, PNG — up to 50 MB</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <textarea 
+                value={manualText}
+                onChange={(e) => setManualText(e.target.value)}
+                placeholder="Paste the clinical visit note here..."
+                className="form-control"
+                rows={8}
+                style={{ resize: 'vertical', fontSize: 13, lineHeight: 1.6 }}
+              />
+              <button 
+                onClick={handleManualSubmit}
+                className="btn btn-primary"
+                style={{ background: 'var(--teal)', border: 'none', padding: '10px', fontWeight: 600 }}
+              >
+                Start AI Analysis
+              </button>
+            </div>
+          )}
         </div>
       )}
 
