@@ -122,8 +122,15 @@ def _post_chat(body: dict[str, Any], timeout: int = 90):
             continue
         seen.add(marker)
 
+        # Ensure we use the correct endpoint for Azure if provided
+        target_endpoint = ENDPOINT
+        if "openai.azure.com" in target_endpoint and "/openai/deployments/" not in target_endpoint:
+             # If user provided base URL but not deployment path
+             # This is a fallback, but the user seems to have the full path
+             pass
+
         response = requests.post(
-            ENDPOINT,
+            target_endpoint,
             headers=_headers(),
             json=attempt,
             timeout=timeout,
@@ -152,7 +159,7 @@ def _post_chat(body: dict[str, Any], timeout: int = 90):
     return last_response
 
 
-def generate_soap(text: str):
+def generate_soap(text: str, historical_context: str = ""):
     transcript = (text or "").strip()
 
     if not transcript:
@@ -162,16 +169,28 @@ def generate_soap(text: str):
         fallback = {**SOAP_FALLBACK, "subjective": transcript}
         return json.dumps(fallback)
 
+    system_message = (
+        "You are a medical AI assistant. Convert the consultation transcript "
+        "into a SOAP note. Return only valid JSON with these exact keys: "
+        "subjective, objective, assessment, plan, medications, "
+        "follow_up_needed, follow_up_days. Medications must be an array."
+    )
+
+    if historical_context:
+        system_message += (
+            f"\n\n[HISTORICAL CONTEXT]\n{historical_context}\n\n"
+            "CRITICAL INSTRUCTION: You MUST actively incorporate the patient's past medical history, "
+            "allergies, and previous conditions from the [HISTORICAL CONTEXT] into this new SOAP note. "
+            "Do not ignore the historical context. For example, explicitly list known allergies and past "
+            "major conditions in the Subjective or Assessment sections, and ensure your Plan does not "
+            "contradict known allergies."
+        )
+
     body = {
         "messages": [
             {
                 "role": "system",
-                "content": (
-                    "You are a medical AI assistant. Convert the consultation transcript "
-                    "into a SOAP note. Return only valid JSON with these exact keys: "
-                    "subjective, objective, assessment, plan, medications, "
-                    "follow_up_needed, follow_up_days. Medications must be an array."
-                ),
+                "content": system_message,
             },
             {
                 "role": "user",

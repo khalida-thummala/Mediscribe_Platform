@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 # Load .env file explicitly from the backend directory
 env_path = Path(__file__).parent.parent.parent / ".env"
-# load_dotenv(env_path)
+load_dotenv(env_path)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "MediScribe"
